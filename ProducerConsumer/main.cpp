@@ -1,10 +1,7 @@
 #include <iostream>
 #include <semaphore.h>
 #include <pthread.h>
-#include <stdio.h>
-#include <stdlib.h>
 #include <fstream>
-#include <string>
 #include <sstream>
 
 using namespace std;
@@ -33,7 +30,6 @@ Item* buffer;
 
 int producerIndex = 0;
 int consumerIndex = 0;
-int consumedItems = 0;
 
 sem_t mutex;
 sem_t full;
@@ -94,9 +90,6 @@ int main(int argc, char* argv[])
 
     // Create buffer
     buffer = new Item[bufferSize];
-
-    // Seed rng
-    srand(1234);
 
     // Open diary file
     diaryFile.open("diary");
