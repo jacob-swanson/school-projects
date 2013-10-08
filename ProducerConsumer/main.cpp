@@ -1,7 +1,11 @@
 #include <iostream>
 #include <semaphore.h>
 #include <pthread.h>
+#include <stdio.h>
 #include <stdlib.h>
+#include <fstream>
+#include <string>
+#include <sstream>
 
 using namespace std;
 
@@ -34,6 +38,8 @@ int consumedItems = 0;
 sem_t mutex;
 sem_t full;
 sem_t empty;
+
+ofstream diaryFile;
 
 // Functions
 void* producer(void* arg);
@@ -90,6 +96,9 @@ int main(int argc, char* argv[])
     // Create buffer
     buffer = new Item[bufferSize];
 
+    // Open diary file
+    diaryFile.open("diary");
+
     // Create producers
     pthread_t producers[numProducers];
     int baseItems = numItems / numProducers;
@@ -137,6 +146,8 @@ int main(int argc, char* argv[])
         }
     }
 
+    // Close diary file
+    diaryFile.close();
 
     return 0;
 }
@@ -144,6 +155,12 @@ int main(int argc, char* argv[])
 void* producer(void* arg)
 {
     Arguments args = *((Arguments*)arg);
+
+    // Open output file
+    ofstream output;
+    stringstream filename;
+    filename << "prod_" << args.id;
+    output.open(filename.str().c_str());
 
     sem_wait(&mutex);
     srand(1234);
@@ -162,15 +179,22 @@ void* producer(void* arg)
         // Place data into buffer
         buffer[producerIndex] = data;
 
-        cout << "Producer" << args.id
+        output << "Producer" << args.id
              << " placed data [" << data.value
              << "] in buffer slot(" << producerIndex << ")" << endl;
+        diaryFile << "Producer" << args.id
+             << " placed data [" << data.value
+             << "] in buffer slot(" << producerIndex << ")" << endl;
+
 
         producerIndex = (producerIndex + 1) % bufferSize;
 
         sem_post(&mutex);
         sem_post(&full);
     }
+
+    // Close output file
+    output.close();
 
     return 0;
 }
@@ -179,22 +203,36 @@ void* consumer(void* arg)
 {
     Arguments args = *((Arguments*)arg);
 
+    // Open output file
+    ofstream output;
+    stringstream filename;
+    filename << "con_" << args.id;
+    output.open(filename.str().c_str());
+
     for (int i = 0; i < args.numItems; i++) {
         sem_wait(&full);
         sem_wait(&mutex);
 
         Item data = buffer[consumerIndex];
 
-        cout << "Consumer" << args.id
+        output << "Consumer" << args.id
              << " received Producer" << data.producerId
              << "'s data item [" << data.value
              << "] via buffer slot(" << consumerIndex << ")" << endl;
+        diaryFile << "Consumer" << args.id
+             << " received Producer" << data.producerId
+             << "'s data item [" << data.value
+             << "] via buffer slot(" << consumerIndex << ")" << endl;
+
 
         consumerIndex = (consumerIndex + 1) % bufferSize;
 
         sem_post(&mutex);
         sem_post(&empty);
     }
+
+    // Close output file
+    output.close();
 
     return 0;
 }
