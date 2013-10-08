@@ -45,8 +45,6 @@ ofstream diaryFile;
 void* producer(void* arg);
 void* consumer(void* arg);
 
-
-
 int main(int argc, char* argv[])
 {
     // Get user input
@@ -81,6 +79,7 @@ int main(int argc, char* argv[])
         cerr << "Error creating mutex semaphore" << endl;
         return 1;
     }
+
     status = sem_init(&full, 0, 0);
     if (status != 0) {
         cerr << "Error creating full semaphore" << endl;
@@ -95,6 +94,9 @@ int main(int argc, char* argv[])
 
     // Create buffer
     buffer = new Item[bufferSize];
+
+    // Seed rng
+    srand(1234);
 
     // Open diary file
     diaryFile.open("diary");
@@ -161,17 +163,17 @@ void* producer(void* arg)
     stringstream filename;
     filename << "prod_" << args.id;
     output.open(filename.str().c_str());
-
-    sem_wait(&mutex);
-    srand(1234);
-    sem_post(&mutex);
-
+    long int count;
 
     for (int i = 0; i < args.numItems; i++) {
         // Create data
         Item data;
-        data.value = rand() % 100 + 1;
         data.producerId = args.id;
+        if (count >= 100)
+            count = -1;
+
+        count = count + 1;
+        data.value = count;
 
         sem_wait(&empty);
         sem_wait(&mutex);
