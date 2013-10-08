@@ -1,3 +1,13 @@
+// ProducerConsumer Program
+// main.cpp
+// Spawns a number of threads depending on user input, and uses a circular
+// buffer to exchange data between producers and consumers. The size of the
+// buffer and the number of items is determined by user input as well.
+
+// Build and run instructions:
+//  g++ main.cpp -o ProducerConsumer -lpthread
+//  ./ProducerConsumer
+
 #include <iostream>
 #include <semaphore.h>
 #include <pthread.h>
