@@ -7,12 +7,25 @@ using namespace std;
 
 #define MAX_CHILDREN 100
 
+// Structures
+class Arguments {
+public:
+    int id;
+    int numItems;
+};
+
+class Item {
+public:
+    int producerId;
+    int value;
+};
+
 // Global variables
 int numProducers = 0;
 int numConsumers = 0;
 int numItems = 0;
 int bufferSize = 0;
-int* buffer;
+Item* buffer;
 
 int producerIndex = 0;
 int consumerIndex = 0;
@@ -25,6 +38,8 @@ sem_t empty;
 // Functions
 void* producer(void* arg);
 void* consumer(void* arg);
+
+
 
 int main(int argc, char* argv[])
 {
@@ -73,16 +88,18 @@ int main(int argc, char* argv[])
     }
 
     // Create buffer
-    buffer = new int[bufferSize];
+    buffer = new Item[bufferSize];
 
     // Create producers
     pthread_t producers[numProducers];
     int baseItems = numItems / numProducers;
     int extraItems = numItems % numProducers;
     for (int i = 0; i < numProducers; i++) {
-        int* producingItems = new int;
-        *producingItems = baseItems + (extraItems > i);
-        int status = pthread_create(&producers[i], NULL, producer, producingItems);
+        // args must be allocated dynamically
+        Arguments* args = new Arguments();
+        args->numItems = baseItems + (extraItems > i);
+        args->id = i;
+        int status = pthread_create(&producers[i], NULL, producer, args);
         if (status != 0) {
             cerr << "Error creating producer" << endl;
             return 1;
@@ -94,9 +111,11 @@ int main(int argc, char* argv[])
     baseItems = numItems / numConsumers;
     extraItems = numItems % numConsumers;
     for (int i = 0; i < numConsumers; i++) {
-        int* consumingItems = new int;
-        *consumingItems = baseItems + (extraItems > i);
-        int status = pthread_create(&consumers[i], NULL, consumer, consumingItems);
+        // args must be allocated dynamically
+        Arguments* args = new Arguments();
+        args->numItems = baseItems + (extraItems > i);
+        args->id = i;
+        int status = pthread_create(&consumers[i], NULL, consumer, args);
         if (status != 0) {
             cerr << "Error creating consumer" << endl;
             return 1;
@@ -124,17 +143,18 @@ int main(int argc, char* argv[])
 
 void* producer(void* arg)
 {
-    int numItems = *((int*)arg);
-    pthread_t self = pthread_self();
+    Arguments args = *((Arguments*)arg);
 
     sem_wait(&mutex);
     srand(1234);
-    cout << "Producer " << self << "items to produce: " << numItems << endl;
     sem_post(&mutex);
 
 
-    for (int i = 0; i < numItems; i++) {
-        int data = rand() % 100 + 1;
+    for (int i = 0; i < args.numItems; i++) {
+        // Create data
+        Item data;
+        data.value = rand() % 100 + 1;
+        data.producerId = args.id;
 
         sem_wait(&empty);
         sem_wait(&mutex);
@@ -142,9 +162,9 @@ void* producer(void* arg)
         // Place data into buffer
         buffer[producerIndex] = data;
 
-        cout << "Producer " << self
-             << " placed data [" << data
-             << "] in buffer slot [" << producerIndex << "]" << endl;
+        cout << "Producer" << args.id
+             << " placed data [" << data.value
+             << "] in buffer slot(" << producerIndex << ")" << endl;
 
         producerIndex = (producerIndex + 1) % bufferSize;
 
@@ -157,23 +177,21 @@ void* producer(void* arg)
 
 void* consumer(void* arg)
 {
-    int numItems = *((int*)arg);
-    pthread_t self = pthread_self();
+    Arguments args = *((Arguments*)arg);
 
     sem_wait(&mutex);
-    cout << "Consumer " << self << "items to consume: " << numItems << endl;
     sem_post(&mutex);
 
-
-    for (int i = 0; i < numItems; i++) {
+    for (int i = 0; i < args.numItems; i++) {
         sem_wait(&full);
         sem_wait(&mutex);
 
-        int data = buffer[consumerIndex];
+        Item data = buffer[consumerIndex];
 
-        cout << "Consumer " << self
-             << " received data item [" << data
-             << "] via buffer slot [" << consumerIndex << "]" << endl;
+        cout << "Consumer" << args.id
+             << " received Producer" << data.producerId
+             << "'s data item [" << data.value
+             << "] via buffer slot(" << consumerIndex << ")" << endl;
 
         consumerIndex = (consumerIndex + 1) % bufferSize;
 
