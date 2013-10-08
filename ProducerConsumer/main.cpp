@@ -179,9 +179,6 @@ void* consumer(void* arg)
 {
     Arguments args = *((Arguments*)arg);
 
-    sem_wait(&mutex);
-    sem_post(&mutex);
-
     for (int i = 0; i < args.numItems; i++) {
         sem_wait(&full);
         sem_wait(&mutex);
