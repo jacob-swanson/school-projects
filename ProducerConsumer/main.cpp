@@ -13,6 +13,7 @@
 #include <pthread.h>
 #include <fstream>
 #include <sstream>
+#include <stdlib.h>
 
 using namespace std;
 
@@ -101,6 +102,9 @@ int main(int argc, char* argv[])
     // Create buffer
     buffer = new Item[bufferSize];
 
+    // Seed rng
+    srand(time(NULL));
+
     // Open diary file
     diaryFile.open("diary");
 
@@ -176,6 +180,13 @@ void* producer(void* arg)
             count = -1;
 
         count = count + 1;
+
+        // Make some noise
+        int rnd = rand() / 10;
+        for (int x = 0; x < rnd; x++) {
+            count += 1;
+            count -= 1;
+        }
         data.value = count;
 
         sem_wait(&empty);
