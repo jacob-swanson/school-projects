@@ -6,6 +6,7 @@
 /* Input Argument: shared memory input id number */
 
 #include <unistd.h>
+#include <string.h>
 
 void shfree (int shm_id) {
    char argument[3][10];

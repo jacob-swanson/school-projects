@@ -5,6 +5,8 @@ using namespace std;
 #include <sys/types.h>
 #include <sys/shm.h>
 #include <sys/sem.h>
+#include <stdlib.h>
+#include <string.h>
 
 // macro's that lets me use pointers into the shared memory region in a somewhat
 // umbiquious manner making them appear as simple variables and one dimentional

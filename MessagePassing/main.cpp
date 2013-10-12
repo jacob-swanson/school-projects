@@ -13,6 +13,8 @@ using namespace std;
 #include <sys/types.h>
 #include <sys/shm.h>
 #include <sys/sem.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 #include "shfree.cpp" //wrapper to allow semaphore to automatically be removed
 
@@ -82,7 +84,7 @@ void int_to_C_string_conv(char * C_str_num, int num) {
    strcpy(C_str_num,s.c_str());
 }
 
-main() {
+int main() {
 
    /* major runtime parameters to be obtained from user */
    int num_producers; // number of producer processes
