@@ -40,6 +40,9 @@ float* b;
 float* c;
 int numThreads;
 int numRows;
+int condition = 0;
+pthread_cond_t cond;
+pthread_mutex_t mutex;
 
 int main(int argc, char* argv[])
 {
@@ -94,6 +97,10 @@ int main(int argc, char* argv[])
     cout << "B:" << endl;
     printMatrix(b, dim_m, dim_n);
 
+    // Initialize synchronization
+    pthread_cond_init(&cond, NULL);
+    pthread_mutex_init(&mutex, NULL);
+
     // Create worker threads
     pthread_t workers[numThreads];
     for (int i = 0; i < numThreads; i++) {
@@ -109,6 +116,16 @@ int main(int argc, char* argv[])
     // Start recording time
     TIMER_CLEAR;
     TIMER_START;
+
+    // Start threads
+    pthread_mutex_lock(&mutex);
+    condition = 1;
+    if (pthread_cond_broadcast(&cond)) {
+        cout << "Error: Failed to start threads" << endl;
+        pthread_mutex_unlock(&mutex);
+        return 1;
+    }
+    pthread_mutex_unlock(&mutex);
 
     for (int i = 0; i < numThreads; i++) {
         pthread_join(workers[i], NULL);
@@ -156,6 +173,12 @@ void printMatrix(float* array, int dim_m, int dim_n) {
 void* thread(void *args) {
     int id = *((int*)args);
 
+    // Wait to start
+    pthread_mutex_lock(&mutex);
+    while (!condition)
+        pthread_cond_wait(&cond, &mutex);
+    pthread_mutex_unlock(&mutex);
+
     // Multiply matrices
     for (int i = 0; i < numRows; i++) {
         for (int j = 0; j < dim_n; j++) {
@@ -168,7 +191,7 @@ void* thread(void *args) {
     }
 
 
-    return 0;
+    pthread_exit((void*)0);
 }
 
 
