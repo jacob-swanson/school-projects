@@ -2,6 +2,7 @@
 #include <iomanip>
 #include <stdlib.h>
 #include <sys/time.h>
+#include <pthread.h>
 
 #define SEED 2397
 #define MAX_VALUE 100.0
@@ -29,33 +30,45 @@ void fillMatrixTrans(float* array, int dim_m, int dim_n);
 // Output matrix
 void printMatrix(float* array, int dim_m, int dim_n);
 
+// Thread function for multiplication
+void* thread(void* args);
+
+// Global variables
+int dim_l, dim_n, dim_m;
+float* a;
+float* b;
+float* c;
+int numThreads;
+int numRows;
+
 int main(int argc, char* argv[])
 {
-    int dim_l, dim_n, dim_m;
-    float* a;
-    float* b;
-    float* c;
-
-    // Get matrix sizes
-    if (argc != 2 && argc != 4) {
+    // Parse arguments
+    if (argc != 3 && argc != 5) {
         // Incorrect number of arguments
-        cout << "Usage: " << argv[0] << " [l_dimension] <m_dimension n_dimmension>" << endl;
+        cout << "Usage: " << argv[0] << " [n_threads] [l_dimension] <m_dimension n_dimension>" << endl;
         return 1;
     } else {
-        if (argc == 2) {
-            // Only one arg, square matrices
-            dim_l = dim_n = dim_m = atoi(argv[1]);
+        if (argc == 3) {
+            // Only required args
+            numThreads = atoi(argv[1]);
+            dim_l = dim_n = dim_m = atoi(argv[2]);
         } else {
-            // Three args, arbitrary size
-            dim_l = atoi(argv[1]);
-            dim_m = atoi(argv[2]);
-            dim_n = atoi(argv[3]);
+            // Optional args
+            numThreads = atoi(argv[1]);
+            dim_l = atoi(argv[2]);
+            dim_m = atoi(argv[3]);
+            dim_n = atoi(argv[4]);
         }
     }
+    numRows = dim_l / numThreads;
 
     // Input validation
     if (dim_l <= 0 || dim_m <= 0 || dim_m <= 0) {
         cout << "Error: Number of rows and/or columns must be greater than 0" << endl;
+        return 1;
+    } else if (numThreads <= 0 || numThreads > 8) {
+        cout << "Error: Number of threads must be between 1 and 8" << endl;
         return 1;
     }
 
@@ -81,19 +94,24 @@ int main(int argc, char* argv[])
     cout << "B:" << endl;
     printMatrix(b, dim_m, dim_n);
 
+    // Create worker threads
+    pthread_t workers[numThreads];
+    for (int i = 0; i < numThreads; i++) {
+        int* id = new int;
+        *id = i;
+        if (pthread_create(&workers[i], NULL, thread, id)) {
+            cout << "Error: Could not create worker threads" << endl;
+            return 1;
+        }
+    }
+
+
     // Start recording time
     TIMER_CLEAR;
     TIMER_START;
 
-    // Multiply matrices
-    for (int i = 0; i < dim_l; i++) {
-        for (int j = 0; j < dim_n; j++) {
-            float dotProd = 0.0;
-            for (int k = 0; k < dim_m; k++) {
-                dotProd += A(i,k) * B(k,j);
-            }
-            C(i,j) = dotProd;
-        }
+    for (int i = 0; i < numThreads; i++) {
+        pthread_join(workers[i], NULL);
     }
 
     // Stop timer
@@ -105,7 +123,6 @@ int main(int argc, char* argv[])
 
     // Output multiplication time
     cout << "Time: " << setprecision(8) << " " << TIMER_ELAPSED/1000.0 << " ms" << endl;
-
 
     return 0;
 }
@@ -134,6 +151,24 @@ void printMatrix(float* array, int dim_m, int dim_n) {
         }
         cout << endl;
     }
+}
+
+void* thread(void *args) {
+    int id = *((int*)args);
+
+    // Multiply matrices
+    for (int i = 0; i < numRows; i++) {
+        for (int j = 0; j < dim_n; j++) {
+            float dotProd = 0.0;
+            for (int k = 0; k < dim_m; k++) {
+                dotProd += A(i + id,k) * B(k,j);
+            }
+            C(i + id,j) = dotProd;
+        }
+    }
+
+
+    return 0;
 }
 
 
