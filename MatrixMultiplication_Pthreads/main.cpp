@@ -61,6 +61,12 @@ int main(int argc, char* argv[])
             dim_n = atoi(argv[4]);
         }
     }
+
+    // Adjust numThreads for even division
+    while (dim_l % numThreads) {
+        numThreads--;
+    }
+
     numRows = dim_l / numThreads;
 
     // Input validation
@@ -110,7 +116,6 @@ int main(int argc, char* argv[])
             return 1;
         }
     }
-
 
     // Start recording time
     TIMER_CLEAR;
