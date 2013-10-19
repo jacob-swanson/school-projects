@@ -24,9 +24,6 @@ using namespace std;
 // Fill array with random data
 void fillMatrix(float* array, int dim_m, int dim_n);
 
-// Fill array with tranposed random data
-void fillMatrixTrans(float* array, int dim_m, int dim_n);
-
 // Output matrix
 void printMatrix(float* array, int dim_m, int dim_n);
 
@@ -88,14 +85,16 @@ int main(int argc, char* argv[])
     // Fill matrices
     srand48(SEED);
     fillMatrix(a, dim_l, dim_n);
-    fillMatrixTrans(b, dim_m, dim_n);
+    fillMatrix(b, dim_m, dim_n);
 
     // Print input matrices
-    cout << "A:" << endl;
-    printMatrix(a, dim_l, dim_m);
+    if (dim_n <= 8) {
+        cout << "A:" << endl;
+        printMatrix(a, dim_l, dim_m);
 
-    cout << "B:" << endl;
-    printMatrix(b, dim_m, dim_n);
+        cout << "B:" << endl;
+        printMatrix(b, dim_m, dim_n);
+    }
 
     // Initialize synchronization
     pthread_cond_init(&cond, NULL);
@@ -135,8 +134,10 @@ int main(int argc, char* argv[])
     TIMER_STOP;
 
     // Output result matrix
-    cout << "C:" << endl;
-    printMatrix(c, dim_l, dim_n);
+    if (dim_n <= 8) {
+        cout << "C:" << endl;
+        printMatrix(c, dim_l, dim_n);
+    }
 
     // Output multiplication time
     cout << "Time: " << setprecision(8) << " " << TIMER_ELAPSED/1000.0 << " ms" << endl;
@@ -150,15 +151,6 @@ void fillMatrix(float* array, int dim_m, int dim_n) {
             array[i * dim_n + j] = drand48() * MAX_VALUE;
         }
     }
-}
-
-void fillMatrixTrans(float* array, int dim_m, int dim_n) {
-    for (int i = 0; i < dim_m; i++) {
-        for (int j = 0; j < dim_n; j++) {
-            array[j * dim_n + i] = drand48() * MAX_VALUE;
-        }
-    }
-
 }
 
 void printMatrix(float* array, int dim_m, int dim_n) {
