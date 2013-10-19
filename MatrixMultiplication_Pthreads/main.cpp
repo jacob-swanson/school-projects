@@ -175,8 +175,9 @@ void* thread(void *args) {
 
     // Wait to start
     pthread_mutex_lock(&mutex);
-    while (!condition)
+    while (!condition) {
         pthread_cond_wait(&cond, &mutex);
+    }
     pthread_mutex_unlock(&mutex);
 
     // Multiply matrices
@@ -184,9 +185,9 @@ void* thread(void *args) {
         for (int j = 0; j < dim_n; j++) {
             float dotProd = 0.0;
             for (int k = 0; k < dim_m; k++) {
-                dotProd += A(i + id,k) * B(k,j);
+                dotProd += A((i + id),k) * B(k,j);
             }
-            C(i + id,j) = dotProd;
+            C((i + id),j) = dotProd;
         }
     }
 
