@@ -1,0 +1,179 @@
+#include <iostream>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <unistd.h>
+#include <pthread.h>
+#include <sys/time.h>
+#include <iomanip>
+
+#define TIMER_CLEAR     (tv1.tv_sec = tv1.tv_usec = tv2.tv_sec = tv2.tv_usec = 0)
+#define TIMER_START     gettimeofday(&tv1, (struct timezone*)0)
+#define TIMER_ELAPSED   ((tv2.tv_usec-tv1.tv_usec)+((tv2.tv_sec-tv1.tv_sec)*1000000))
+#define TIMER_STOP      gettimeofday(&tv2, (struct timezone*)0)
+struct timeval tv1,tv2;
+
+#define PORT 8967   // Port to bind to
+#define BACKLOG 10  // Size of pending connections queue
+#define NUM_CLIENTS 1  // Number of clients before work begins
+#define MAXDATASIZE 1024    // Buffer size
+
+void* thread(void*);
+
+pthread_cond_t cond;
+pthread_mutex_t mutex;
+int condition = 0;
+
+using namespace std;
+
+class Arguments
+{
+public:
+    int id;
+    int mySocket;
+};
+
+int main()
+{
+    // Create the socket
+    int serverSocket = socket(PF_INET, SOCK_STREAM, 0);
+    if (serverSocket < 0)
+    {
+        cerr << "Error opening socket" << endl;
+        return 1;
+    }
+
+    // Bind socket to a port
+    struct sockaddr_in sockAddress;
+    sockAddress.sin_family = AF_INET;
+    sockAddress.sin_port = htons(PORT);
+    sockAddress.sin_addr.s_addr = INADDR_ANY;
+
+    int bindStatus = bind(
+                serverSocket,
+                (struct sockaddr *) &sockAddress,
+                sizeof(struct sockaddr_in));
+    if (bindStatus < 0)
+    {
+        cerr << "Error binding socket" << endl;
+        return 1;
+    }
+
+    // Start listening
+    int listenStatus = listen(serverSocket, BACKLOG);
+    if (listenStatus < 0)
+    {
+        cerr << "Error listening on socket" << endl;
+        return 1;
+    }
+
+    cout << "Server listening..." << endl;
+
+    // Main loop
+    pthread_t workers[NUM_CLIENTS];
+    int numWorkers = 0;
+    while (true)
+    {
+        // Accept connections
+        struct sockaddr_in clientAddress;
+        socklen_t clientAddressLength;
+        int clientSocket = accept(
+                    serverSocket,
+                    (struct sockaddr *) &clientAddress,
+                    &clientAddressLength);
+        if (clientSocket < 0)
+        {
+            cerr << "Error accepting connection" << endl;
+            return 1;
+        }
+
+        cout << "Accepted connection from: "
+                << inet_ntoa(clientAddress.sin_addr)
+                << ":" << ntohs(clientAddress.sin_port)
+                << endl;
+
+        // Create client thread
+        Arguments *args = new Arguments();
+        args->id = numWorkers;
+        args->mySocket = clientSocket;
+        if (pthread_create(&workers[numWorkers], NULL, thread, args))
+        {
+            cerr << "Error creating worker thread" << endl;
+            return 1;
+        }
+        numWorkers++;
+
+        // Check if all clients have connected
+        if (numWorkers == NUM_CLIENTS)
+        {
+            // Start timer
+            TIMER_CLEAR;
+            TIMER_START;
+
+            cout << "Starting workers" << endl;
+            // Broadcast the starting condition
+            pthread_mutex_lock(&mutex);
+            condition = 1;
+            if (pthread_cond_broadcast(&cond))
+            {
+                cout << "Error setting condition" << endl;
+                pthread_mutex_unlock(&mutex);
+                return 1;
+            }
+            pthread_mutex_unlock(&mutex);
+
+            // Wait for workers to finish
+            for (int i = 0; i < NUM_CLIENTS; i++)
+            {
+                pthread_join(workers[i], NULL);
+            }
+
+            // Combine work
+
+            // Stop timer
+            TIMER_STOP;
+
+            cout << "Time taken: " << setprecision(8) << TIMER_ELAPSED/1000.0 << " ms" << endl;
+
+            break;
+        }
+    }
+
+    // Exit
+    close(serverSocket);
+    return 0;
+}
+
+void* thread(void *argsPtr)
+{
+    Arguments args = *((Arguments*)argsPtr);
+
+    // Wait for the condition
+    pthread_mutex_lock(&mutex);
+    while (!condition)
+    {
+        pthread_cond_wait(&cond, &mutex);
+    }
+    pthread_mutex_unlock(&mutex);
+
+    // Send data
+    if (send(args.mySocket, "Hello, client!", 13, 0) < 0)
+    {
+        cerr << "Error sending to client" << endl;
+        pthread_exit((void*) 1);
+    }
+
+    // Receive result
+    int numBytes;
+    char buf[MAXDATASIZE];
+    if ((numBytes = recv(args.mySocket, buf, MAXDATASIZE - 1, 0)) < 0)
+    {
+        cerr << "Error receiving data" << endl;
+        pthread_exit((void*) 1);
+    }
+    cout << "Received: " << buf << endl;
+
+    // Exit
+    close(args.mySocket);
+    pthread_exit((void*) 0);
+}
