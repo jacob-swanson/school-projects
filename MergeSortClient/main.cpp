@@ -7,7 +7,7 @@
 
 #define PORT 8967   // Port to bind to
 #define HOST "127.0.0.1"    // Host to connect to
-#define MAXDATASIZE 524280
+#define EXPECTED_DATA 40000 // Number of integers * 4
 #define THREADS 8
 
 void* thread(void *argsPtr);
@@ -55,12 +55,13 @@ int main()
         cerr << "Error opening first socket" << endl;
         return 1;
     }
+    cout << "Connection Status: " << connectionStatus << endl;
 
     // Receive data
     int numBytes;
 
-    int buf[MAXDATASIZE];
-    if ((numBytes = recv(clientSocket, buf, MAXDATASIZE - 1, 0)) < 0)
+    int buf[EXPECTED_DATA];
+    if ((numBytes = recv(clientSocket, buf, EXPECTED_DATA, MSG_WAITALL)) <= 0)
     {
         cerr << "Error receiving data" << endl;
         close(clientSocket);

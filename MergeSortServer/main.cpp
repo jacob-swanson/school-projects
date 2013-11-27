@@ -20,7 +20,8 @@ struct timeval tv1,tv2;
 #define NUM_CLIENTS 2  // Number of clients before work begins
 #define MAXDATASIZE 524280    // Buffer size
 #define SEED 1234   // Seed for random
-#define DATA_SIZE 60000    // Amount of data to produce
+#define DATA_SIZE 10000    // Amount of data to produce
+#define EXPECTED_DATA 40000
 
 void* thread(void*);
 
@@ -196,7 +197,7 @@ void* thread(void *argsPtr)
     // Receive result
     int numBytes;
     int buf[MAXDATASIZE];
-    if ((numBytes = recv(args.mySocket, buf, MAXDATASIZE - 1, 0)) < 0)
+    if ((numBytes = recv(args.mySocket, buf, EXPECTED_DATA, MSG_WAITALL)) < 0)
     {
         cerr << "Error receiving data" << endl;
         pthread_exit((void*) 1);
