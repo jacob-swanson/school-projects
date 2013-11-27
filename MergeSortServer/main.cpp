@@ -20,7 +20,7 @@ struct timeval tv1,tv2;
 #define NUM_CLIENTS 2  // Number of clients before work begins
 #define MAXDATASIZE 524280    // Buffer size
 #define SEED 1234   // Seed for random
-#define DATA_SIZE 130000    // Amount of data to produce
+#define DATA_SIZE 60000    // Amount of data to produce
 
 void* thread(void*);
 
@@ -53,6 +53,14 @@ int main()
     if (serverSocket < 0)
     {
         cerr << "Error opening socket" << endl;
+        close(serverSocket);
+        return 1;
+    }
+
+    int yes = 1;
+    if (setsockopt(serverSocket, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) < 0)
+    {
+        cerr << "Error setting socket options" << endl;
         close(serverSocket);
         return 1;
     }

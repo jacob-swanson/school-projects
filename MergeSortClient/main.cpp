@@ -70,13 +70,16 @@ int main()
     num = numBytes/4;
     data = new int[num];
     sortedData = new int[num];
-    cout << "Received: ";
+    //cout << "Received: ";
+    int received = 0;
     for (int i = 0; i < num; i++)
     {
-        cout << buf[i] << " ";
+        //cout << buf[i] << " ";
         data[i] = buf[i];
+        received++;
     }
     cout << endl;
+    cout << "Received: " << received << endl;
 
     // Create worker threads
     pthread_t workers[THREADS];
@@ -118,12 +121,12 @@ int main()
         pthread_join(workers[i], NULL);
     }
 
-    cout << "Sorted Data: ";
-    for (int i = 0; i < num; i++)
-    {
-        cout << sortedData[i] << " ";
-    }
-    cout << endl;
+//    cout << "Sorted Data: ";
+//    for (int i = 0; i < num; i++)
+//    {
+//        cout << sortedData[i] << " ";
+//    }
+//    cout << endl;
 
     // Return result
     if (send(clientSocket, sortedData, numBytes, 0) < 0)
