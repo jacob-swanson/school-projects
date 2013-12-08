@@ -10,6 +10,7 @@ using namespace std;
 #include <string.h>
 #include <sys/types.h>
 #include <sys/time.h>
+#include <list>
 
 #define N 100        // maximum dimension of adj_matrix
 #define MX_LN 256    // maximum line size
@@ -33,7 +34,7 @@ unsigned int num_vertex,src_vertex;
 
 class Arguments {
 public:
-        unsigned int i;
+    unsigned int i;
 };
 
 /* arg_fetch:  This routine allows individual arguments
@@ -234,17 +235,28 @@ int main(int argc, char *argv[])
 
     // see page 220 of text for detailed description of this
     // section of the algorithm
-    //while ((i = next_vertex(num_vertex)) != num_vertex)
     while (num_ele > 0)
     {
-        Arguments *args = new Arguments();
-        args->i = next_vertex(num_vertex);
+        // Create workers
+        list<pthread_t*> workers;
+        while (num_ele > 0)
+        {
+            Arguments *args = new Arguments();
+            args->i = next_vertex(num_vertex);
 
-        pthread_t worker;
-        pthread_create(&worker, NULL, thread, args);
+            workers.push_back(new pthread_t());
+            pthread_create(workers.back(), NULL, thread, args);
+        }
+        cout << "Created: " << workers.size() << " thread(s)" << endl;
 
-        pthread_join(worker, NULL);
+        // Wait for them to finish
+        while (!workers.empty())
+        {
+            pthread_join(*workers.front(), NULL);
+            workers.pop_front();
+        }
     }
+
     output_distance(dist,num_vertex);
 }
 
