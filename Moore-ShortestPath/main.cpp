@@ -250,6 +250,8 @@ int main(int argc, char *argv[])
         cout << "Created: " << workers.size() << " thread(s)" << endl;
 
         // Wait for them to finish
+        // Need to wait because the queue will be empty because the
+        // threads need to finish their work
         while (!workers.empty())
         {
             pthread_join(*workers.front(), NULL);
