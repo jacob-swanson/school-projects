@@ -7,12 +7,12 @@
 #define HEIGHT 512
 
 // Default values
-#define FISH_CHANCE 0.01
-#define SHARK_CHANCE 0.0
+#define FISH_CHANCE 0.6
+#define SHARK_CHANCE 0.2
 #define ITERATIONS 1000
 #define SEED 1234
-#define BIRTHING_AGE 74
-#define DEATH_AGE 75
+#define BIRTHING_AGE 3
+#define DEATH_AGE 150
 
 #define WATER 0
 #define FISH 1
@@ -73,7 +73,7 @@ void count_fish_and_sharks(int ocean[WIDTH][HEIGHT], unsigned int *fish, unsigne
     }
 }
 
-vector<pair<int,int> > get_empty_adjacent_cells(int ocean[WIDTH][HEIGHT], int updated[WIDTH][HEIGHT], int i, int j)
+vector<pair<int,int> > get_adjacent_water(int ocean[WIDTH][HEIGHT], int updated[WIDTH][HEIGHT], int i, int j)
 {
     vector<pair<int,int> > cells;
 
@@ -82,6 +82,27 @@ vector<pair<int,int> > get_empty_adjacent_cells(int ocean[WIDTH][HEIGHT], int up
         for (int y = j - 1; y < j + 1; y++)
         {
             if (ocean[x][y] == WATER && updated[x][y] == WATER)
+            {
+                pair<int,int> cell;
+                cell.first = x;
+                cell.second = y;
+                cells.push_back(cell);
+            }
+        }
+    }
+
+    return cells;
+}
+
+vector<pair<int,int> > get_adjacent_fish(int ocean[WIDTH][HEIGHT], int updated[WIDTH][HEIGHT], int i, int j)
+{
+    vector<pair<int,int> > cells;
+
+    for (int x = i - 1; x < i + 1; x++)
+    {
+        for (int y = j - 1; y < j + 1; y++)
+        {
+            if (ocean[x][y] > WATER && updated[x][y] > WATER)
             {
                 pair<int,int> cell;
                 cell.first = x;
@@ -113,7 +134,7 @@ void tick(int ocean[WIDTH][HEIGHT])
                 else
                 {
                     // Move
-                    vector<pair<int,int> > adjacent_cells = get_empty_adjacent_cells(ocean, updated, i, j);
+                    vector<pair<int,int> > adjacent_cells = get_adjacent_water(ocean, updated, i, j);
                     pair<int,int> new_pos;
                     if (adjacent_cells.empty()) // Is empty
                     {
@@ -143,6 +164,70 @@ void tick(int ocean[WIDTH][HEIGHT])
 
                     // Update age
                     updated[new_pos.first][new_pos.second]++;
+                }
+            }
+            else if (ocean[i][j] < WATER) // Is shark
+            {
+                // Death
+                if (ocean[i][j]*-1 >= DEATH_AGE)
+                {
+                    ocean[i][j] = WATER;
+                }
+                else
+                {
+                    // Eating and moving
+                    vector<pair<int,int> > adjacent_fish = get_adjacent_fish(ocean, updated, i, j);
+                    pair<int,int> new_pos;
+                    if (adjacent_fish.empty()) // Is empty
+                    {
+                        // Move to a random cell
+                        vector<pair<int,int> > adjacent_cells = get_adjacent_water(ocean, updated, i, j);
+                        if (adjacent_cells.empty()) // Is empty
+                        {
+                            // Move shark over in same place
+                            updated[i][j] = ocean[i][j];
+                            ocean[i][j] = WATER;
+                            new_pos.first = i;
+                            new_pos.second = j;
+                        }
+                        else
+                        {
+                            // One or more free cells, pick a random one
+                            unsigned int index = rand() % adjacent_cells.size();
+                            pair<int,int> cell = adjacent_cells[index];
+                            updated[cell.first][cell.second] = ocean[i][j];
+
+                            // Birthing
+                            if (ocean[i][j]*-1 == BIRTHING_AGE)
+                            {
+                                updated[i][j] = SHARK;
+                            }
+
+                            ocean[i][j] = WATER;
+                            new_pos.first = cell.first;
+                            new_pos.second = cell.second;
+                        }
+                    }
+                    else // Eat a fish
+                    {
+                        // One or more free cells, pick a random one
+                        unsigned int index = rand() % adjacent_fish.size();
+                        pair<int,int> cell = adjacent_fish[index];
+                        updated[cell.first][cell.second] = ocean[i][j];
+
+                        // Birthing
+                        if (ocean[i][j]*-1 == BIRTHING_AGE)
+                        {
+                            updated[i][j] = SHARK;
+                        }
+
+                        ocean[i][j] = WATER;
+                        new_pos.first = cell.first;
+                        new_pos.second = cell.second;
+                    }
+
+                    // Update age
+                    updated[new_pos.first][new_pos.second]--;
                 }
             }
         }
