@@ -29,13 +29,13 @@ void fill_temps(double h[WIDTH][HEIGHT])
     }
 
     // Fill left column
-    for (int j = 0; j < HEIGHT; j++)
+    for (int j = 1; j < HEIGHT; j++)
     {
         h[0][j] = INIT_TEMP;
     }
 
     // Fill right column
-    for (int j = 0; j < HEIGHT; j++)
+    for (int j = 1; j < HEIGHT; j++)
     {
         h[WIDTH-1][j] = INIT_TEMP;
     }
