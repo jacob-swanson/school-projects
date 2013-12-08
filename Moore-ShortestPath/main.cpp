@@ -22,6 +22,20 @@ using namespace std;
 #define TIMER_STOP    gettimeofday(&tv2, (struct timezone*)0)
 struct timeval tv1,tv2;
 
+// Queue
+int num_ele = 0,get_ele=0,put_ele=0;
+int vrt_queue[N];
+
+// Graph
+unsigned int w[N][N];
+unsigned int dist[N];
+unsigned int num_vertex,src_vertex;
+
+class Arguments {
+public:
+        unsigned int i;
+};
+
 /* arg_fetch:  This routine allows individual arguments
    to be parsed out from a string that contains a number
    of arguments separated from one another by spaces.
@@ -135,8 +149,7 @@ void echo_matrix(unsigned int adj_matrix[N][N],int n) {
     }
 }
 
-int num_ele = 0,get_ele=0,put_ele=0;
-int vrt_queue[N];
+
 int next_vertex(int n) {
     int output;
     if (num_ele==0) output=n;
@@ -174,11 +187,29 @@ void set_distance(unsigned int *distance,int n,int src_vert) {
     distance[src_vert]=0; // distance to source vertex is 0
 }
 
+void* thread(void *argsPtr)
+{
+    Arguments *args = ((Arguments*)argsPtr);
+
+    for(unsigned int j = 0; j < num_vertex; j++)
+    {
+        if (w[args->i][j] != INFINITY)
+        {
+            unsigned int newdist_j = dist[args->i] + w[args->i][j];
+            if (newdist_j < dist[j])
+            {
+                dist[j] = newdist_j;
+                append_queue(j);
+            }
+        }
+    }
+
+    pthread_exit((void*)0);
+}
+
+
 int main(int argc, char *argv[])
 {
-    unsigned int w[N][N];
-    unsigned int dist[N];
-    unsigned int num_vertex,src_vertex;
 
     if (argc!=2) {
         cout <<"usage: moore [adjacency matrix file]" << endl;
@@ -203,21 +234,17 @@ int main(int argc, char *argv[])
 
     // see page 220 of text for detailed description of this
     // section of the algorithm
-    unsigned int i;
-    while ((i = next_vertex(num_vertex)) != num_vertex)
+    //while ((i = next_vertex(num_vertex)) != num_vertex)
+    while (num_ele > 0)
     {
-        for(unsigned int j = 0; j < num_vertex; j++)
-        {
-            if (w[i][j] != INFINITY)
-            {
-                unsigned int newdist_j = dist[i] + w[i][j];
-                if (newdist_j < dist[j])
-                {
-                    dist[j] = newdist_j;
-                    append_queue(j);
-                }
-            }
-        }
+        Arguments *args = new Arguments();
+        args->i = next_vertex(num_vertex);
+
+        pthread_t worker;
+        pthread_create(&worker, NULL, thread, args);
+
+        pthread_join(worker, NULL);
     }
     output_distance(dist,num_vertex);
 }
+
