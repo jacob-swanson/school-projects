@@ -1,33 +1,24 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <vector>
 
 // Size of the ocean
 #define WIDTH 512
 #define HEIGHT 512
 
 // Default values
-#define FISH_CHANCE 0.5
-#define SHARK_CHANCE 0.1
+#define FISH_CHANCE 0.01
+#define SHARK_CHANCE 0.0
 #define ITERATIONS 1000
 #define SEED 1234
+#define BIRTHING_AGE 74
+#define DEATH_AGE 75
 
-enum cell_type
-{
-    WATER,
-    FISH,
-    SHARK
-};
+#define WATER 0
+#define FISH 1
+#define SHARK -1
 
 using namespace std;
-
-class Cell
-{
-public:
-    cell_type type;
-    int generation;
-    int fed;
-
-};
 
 /**
  * @brief fill_ocean Fill ocean with water, fish, and sharks
@@ -35,7 +26,7 @@ public:
  * @param fish_chance Chance for a cell to be a fish
  * @param shark_chance Chance for a cell to be a shark
  */
-void fill_ocean(Cell* ocean[WIDTH][HEIGHT], double fish_chance, double shark_chance)
+void fill_ocean(int ocean[WIDTH][HEIGHT], double fish_chance, double shark_chance)
 {
     for (unsigned int i = 0; i < WIDTH; i++)
     {
@@ -43,16 +34,16 @@ void fill_ocean(Cell* ocean[WIDTH][HEIGHT], double fish_chance, double shark_cha
         {
             // Roll chance for fish and sharks
             // Priority: Fish -> Shark -> Water
-            ocean[i][j]->type = WATER;
+            ocean[i][j] = WATER;
 
             if (drand48() < shark_chance)
             {
-                ocean[i][j]->type = SHARK;
+                ocean[i][j] = SHARK;
             }
 
             if (drand48() < fish_chance)
             {
-                ocean[i][j]->type = FISH;
+                ocean[i][j] = FISH;
             }
         }
     }
@@ -64,17 +55,17 @@ void fill_ocean(Cell* ocean[WIDTH][HEIGHT], double fish_chance, double shark_cha
  * @param fish Pointer to fish counter variable
  * @param shark Pointer to shark counter variable
  */
-void count_fish_and_sharks(Cell* ocean[WIDTH][HEIGHT], unsigned int *fish, unsigned int *shark)
+void count_fish_and_sharks(int ocean[WIDTH][HEIGHT], unsigned int *fish, unsigned int *shark)
 {
     for (unsigned int i = 0; i < WIDTH; i++)
     {
         for (unsigned int j = 0; j < HEIGHT; j++)
         {
-            if (ocean[i][j]->type == FISH)
+            if (ocean[i][j] > WATER)
             {
                 *fish = *fish + 1;
             }
-            else if (ocean[i][j]->type == SHARK)
+            else if (ocean[i][j] < WATER)
             {
                 *shark = *shark + 1;
             }
@@ -82,59 +73,87 @@ void count_fish_and_sharks(Cell* ocean[WIDTH][HEIGHT], unsigned int *fish, unsig
     }
 }
 
-/**
- * @brief move_fish Move fish or shark from (i,j) to (x,y)
- * @param i
- * @param j
- * @param x
- * @param y
- */
-void move_fish(int i, int j, int x, int y)
+vector<pair<int,int> > get_empty_adjacent_cells(int ocean[WIDTH][HEIGHT], int updated[WIDTH][HEIGHT], int i, int j)
 {
+    vector<pair<int,int> > cells;
 
+    for (int x = i - 1; x < i + 1; x++)
+    {
+        for (int y = j - 1; y < j + 1; y++)
+        {
+            if (ocean[x][y] == WATER && updated[x][y] == WATER)
+            {
+                pair<int,int> cell;
+                cell.first = x;
+                cell.second = y;
+                cells.push_back(cell);
+            }
+        }
+    }
+
+    return cells;
 }
 
-/**
- * @brief kill_fish Kill fish or shark at (i,j)
- * @param i
- * @param j
- */
-void kill_fish(int i, int j)
+void tick(int ocean[WIDTH][HEIGHT])
 {
+    static int updated[WIDTH][HEIGHT];
 
-}
+    // Ignoring edge cases for now
+    for (unsigned int i = 1; i < WIDTH - 1; i++)
+    {
+        for (unsigned int j = 1; j < HEIGHT - 1; j++)
+        {
+            if (ocean[i][j] > WATER) // Is fish
+            {
+                // Death
+                if (ocean[i][j] >= DEATH_AGE)
+                {
+                    ocean[i][j] = WATER;
+                }
+                else
+                {
+                    // Move
+                    vector<pair<int,int> > adjacent_cells = get_empty_adjacent_cells(ocean, updated, i, j);
+                    pair<int,int> new_pos;
+                    if (adjacent_cells.empty()) // Is empty
+                    {
+                        // Move fish over in same place
+                        updated[i][j] = ocean[i][j];
+                        ocean[i][j] = WATER;
+                        new_pos.first = i;
+                        new_pos.second = j;
+                    }
+                    else
+                    {
+                        // One or more free cells, pick a random one
+                        unsigned int index = rand() % adjacent_cells.size();
+                        pair<int,int> cell = adjacent_cells[index];
+                        updated[cell.first][cell.second] = ocean[i][j];
 
-void tick(Cell* ocean[WIDTH][HEIGHT])
-{
+                        // Birthing
+                        if (ocean[i][j] == BIRTHING_AGE)
+                        {
+                            updated[i][j] = FISH;
+                        }
+
+                        ocean[i][j] = WATER;
+                        new_pos.first = cell.first;
+                        new_pos.second = cell.second;
+                    }
+
+                    // Update age
+                    updated[new_pos.first][new_pos.second]++;
+                }
+            }
+        }
+    }
+
     for (unsigned int i = 0; i < WIDTH; i++)
     {
         for (unsigned int j = 0; j < HEIGHT; j++)
         {
-            if (ocean[i][j]->type == FISH)
-            {
-                // Check adjacent cells
-
-                // If one empty, move to it
-
-                // If multiple empty, pick a random one
-
-                // If breeding age, create baby in left cell
-
-                // If old, die
-
-            }
-            else if (ocean[i][j]->type == SHARK)
-            {
-                // If adjacent with fish, move to it, and eat fish
-
-                // If more adjancent with fish, choose fish at random
-
-                // If no fish, choose random cell
-
-                // If breeding age, give birth
-
-                // If not eaten for y generations, die
-            }
+            ocean[i][j] = updated[i][j];
+            updated[i][j] = WATER;
         }
     }
 }
@@ -168,7 +187,7 @@ int main(int argc, char* argv[])
     srand(SEED);
 
     // Create and fill the ocean
-    static Cell* ocean[WIDTH][HEIGHT]; // Declared as static because of large size
+    static int ocean[WIDTH][HEIGHT]; // Declared as static because of large size
     fill_ocean(ocean, fish_chance, shark_chance);
 
 
