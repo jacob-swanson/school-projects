@@ -137,7 +137,7 @@ void tick(int ocean[WIDTH][HEIGHT])
     static int updated[WIDTH][HEIGHT];
 
     // Ignoring edge cases for now
-#pragma omp parallel for shared(updated,ocean) num_threads(2)
+#pragma omp parallel for shared(updated,ocean)  num_threads(8) collapse(2)
     for (unsigned int i = 1; i < WIDTH - 1; i++)
     {
         for (unsigned int j = 1; j < HEIGHT - 1; j++)
