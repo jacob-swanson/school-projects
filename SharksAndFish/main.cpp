@@ -1,3 +1,12 @@
+/**
+  * Sharks and Fish Problem
+  * Author: Jacob Swanson
+  * Date: 8 December 2013
+  * Build Instructions:
+  *     gcc main.c -o fish-and-sharks -fopenmp
+  * Usage:
+  *     fish-and-sharks [number of threads (optional)]
+  */
 #include <stdio.h>
 #include <stdlib.h>
 #include <vector>
@@ -138,7 +147,6 @@ void tick(int ocean[WIDTH][HEIGHT])
                 // Death
                 if (ocean[i][j] >= DEATH_AGE)
                 {
-#pragma omp critical
                     ocean[i][j] = WATER;
                 }
                 else
@@ -149,11 +157,8 @@ void tick(int ocean[WIDTH][HEIGHT])
                     if (adjacent_cells.empty()) // Is empty
                     {
                         // Move fish over in same place
-#pragma omp critical
-                        {
                             updated[i][j] = ocean[i][j];
                             ocean[i][j] = WATER;
-                        }
                         new_pos.first = i;
                         new_pos.second = j;
                     }
@@ -162,24 +167,20 @@ void tick(int ocean[WIDTH][HEIGHT])
                         // One or more free cells, pick a random one
                         unsigned int index = rand() % adjacent_cells.size();
                         pair<int,int> cell = adjacent_cells[index];
-#pragma omp critical
                         updated[cell.first][cell.second] = ocean[i][j];
 
                         // Birthing
                         if (ocean[i][j] == BIRTHING_AGE)
                         {
-#pragma omp critical
                             updated[i][j] = FISH;
                         }
 
-#pragma omp critical
                         ocean[i][j] = WATER;
                         new_pos.first = cell.first;
                         new_pos.second = cell.second;
                     }
 
                     // Update age
-#pragma omp critical
                     updated[new_pos.first][new_pos.second]++;
                 }
             }
@@ -188,7 +189,6 @@ void tick(int ocean[WIDTH][HEIGHT])
                 // Death
                 if (ocean[i][j]*-1 >= DEATH_AGE)
                 {
-#pragma omp critical
                     ocean[i][j] = WATER;
                 }
                 else
@@ -203,11 +203,8 @@ void tick(int ocean[WIDTH][HEIGHT])
                         if (adjacent_cells.empty()) // Is empty
                         {
                             // Move shark over in same place
-#pragma omp critical
-                            {
                                 updated[i][j] = ocean[i][j];
                                 ocean[i][j] = WATER;
-                            }
                             new_pos.first = i;
                             new_pos.second = j;
                         }
@@ -216,16 +213,13 @@ void tick(int ocean[WIDTH][HEIGHT])
                             // One or more free cells, pick a random one
                             unsigned int index = rand() % adjacent_cells.size();
                             pair<int,int> cell = adjacent_cells[index];
-#pragma omp critical
                             updated[cell.first][cell.second] = ocean[i][j];
 
                             // Birthing
                             if (ocean[i][j]*-1 == BIRTHING_AGE)
                             {
-#pragma omp critical
                                 updated[i][j] = SHARK;
                             }
-#pragma omp critical
                             ocean[i][j] = WATER;
                             new_pos.first = cell.first;
                             new_pos.second = cell.second;
@@ -236,23 +230,19 @@ void tick(int ocean[WIDTH][HEIGHT])
                         // One or more free cells, pick a random one
                         unsigned int index = rand() % adjacent_fish.size();
                         pair<int,int> cell = adjacent_fish[index];
-#pragma omp critical
                         updated[cell.first][cell.second] = ocean[i][j];
 
                         // Birthing
                         if (ocean[i][j]*-1 == BIRTHING_AGE)
                         {
-#pragma omp critical
                             updated[i][j] = SHARK;
                         }
-#pragma omp critical
                         ocean[i][j] = WATER;
                         new_pos.first = cell.first;
                         new_pos.second = cell.second;
                     }
 
                     // Update age
-#pragma omp critical
                     updated[new_pos.first][new_pos.second]--;
                 }
             }
