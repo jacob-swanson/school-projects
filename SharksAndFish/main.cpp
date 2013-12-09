@@ -3,9 +3,9 @@
   * Author: Jacob Swanson
   * Date: 8 December 2013
   * Build Instructions:
-  *     gcc main.c -o fish-and-sharks -fopenmp
+  *     g++ main.cpp -o fish-and-sharks -fopenmp
   * Usage:
-  *     fish-and-sharks [number of threads (optional)]
+  *     fish-and-sharks [number of iterations] [fish chance] [shark chance]
   */
 #include <stdio.h>
 #include <stdlib.h>
