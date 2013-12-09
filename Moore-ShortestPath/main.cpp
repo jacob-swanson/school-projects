@@ -1,6 +1,15 @@
 // A Template file for the serial version of the Moore's Algorithm
 // presented in Chapter 7 of the text
 // B. Earl Wells
+/**
+  * Heat Distribution Problem
+  * Author: Jacob Swanson
+  * Date: 8 December 2013
+  * Build Instructions:
+  *     g++ main.cpp -o more-shortestpath -lpthread
+  * Usage:
+  *     more-shortestpath [number of threads (optional)]
+  */
 
 using namespace std;
 #include <iomanip>
