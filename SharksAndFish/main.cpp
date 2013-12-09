@@ -9,7 +9,7 @@
 
 // Default values
 #define FISH_CHANCE 0.6
-#define SHARK_CHANCE 0.0
+#define SHARK_CHANCE 0.1
 #define ITERATIONS 1000
 #define SEED 1234
 #define BIRTHING_AGE 3
