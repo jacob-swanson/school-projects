@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <vector>
+#include <sys/time.h>
 
 // Size of the ocean
 #define WIDTH 512
@@ -8,7 +9,7 @@
 
 // Default values
 #define FISH_CHANCE 0.6
-#define SHARK_CHANCE 0.2
+#define SHARK_CHANCE 0.0
 #define ITERATIONS 1000
 #define SEED 1234
 #define BIRTHING_AGE 3
@@ -17,6 +18,13 @@
 #define WATER 0
 #define FISH 1
 #define SHARK -1
+
+// copied from mpbench
+#define TIMER_CLEAR     (tv1.tv_sec = tv1.tv_usec = tv2.tv_sec = tv2.tv_usec = 0)
+#define TIMER_START     gettimeofday(&tv1, (struct timezone*)0)
+#define TIMER_ELAPSED   ((tv2.tv_usec-tv1.tv_usec)+((tv2.tv_sec-tv1.tv_sec)*1000000))
+#define TIMER_STOP      gettimeofday(&tv2, (struct timezone*)0)
+struct timeval tv1,tv2;
 
 using namespace std;
 
@@ -120,6 +128,7 @@ void tick(int ocean[WIDTH][HEIGHT])
     static int updated[WIDTH][HEIGHT];
 
     // Ignoring edge cases for now
+#pragma omp parallel for shared(updated,ocean) num_threads(2)
     for (unsigned int i = 1; i < WIDTH - 1; i++)
     {
         for (unsigned int j = 1; j < HEIGHT - 1; j++)
@@ -129,6 +138,7 @@ void tick(int ocean[WIDTH][HEIGHT])
                 // Death
                 if (ocean[i][j] >= DEATH_AGE)
                 {
+#pragma omp critical
                     ocean[i][j] = WATER;
                 }
                 else
@@ -139,8 +149,11 @@ void tick(int ocean[WIDTH][HEIGHT])
                     if (adjacent_cells.empty()) // Is empty
                     {
                         // Move fish over in same place
-                        updated[i][j] = ocean[i][j];
-                        ocean[i][j] = WATER;
+#pragma omp critical
+                        {
+                            updated[i][j] = ocean[i][j];
+                            ocean[i][j] = WATER;
+                        }
                         new_pos.first = i;
                         new_pos.second = j;
                     }
@@ -149,20 +162,24 @@ void tick(int ocean[WIDTH][HEIGHT])
                         // One or more free cells, pick a random one
                         unsigned int index = rand() % adjacent_cells.size();
                         pair<int,int> cell = adjacent_cells[index];
+#pragma omp critical
                         updated[cell.first][cell.second] = ocean[i][j];
 
                         // Birthing
                         if (ocean[i][j] == BIRTHING_AGE)
                         {
+#pragma omp critical
                             updated[i][j] = FISH;
                         }
 
+#pragma omp critical
                         ocean[i][j] = WATER;
                         new_pos.first = cell.first;
                         new_pos.second = cell.second;
                     }
 
                     // Update age
+#pragma omp critical
                     updated[new_pos.first][new_pos.second]++;
                 }
             }
@@ -171,6 +188,7 @@ void tick(int ocean[WIDTH][HEIGHT])
                 // Death
                 if (ocean[i][j]*-1 >= DEATH_AGE)
                 {
+#pragma omp critical
                     ocean[i][j] = WATER;
                 }
                 else
@@ -185,8 +203,11 @@ void tick(int ocean[WIDTH][HEIGHT])
                         if (adjacent_cells.empty()) // Is empty
                         {
                             // Move shark over in same place
-                            updated[i][j] = ocean[i][j];
-                            ocean[i][j] = WATER;
+#pragma omp critical
+                            {
+                                updated[i][j] = ocean[i][j];
+                                ocean[i][j] = WATER;
+                            }
                             new_pos.first = i;
                             new_pos.second = j;
                         }
@@ -195,14 +216,16 @@ void tick(int ocean[WIDTH][HEIGHT])
                             // One or more free cells, pick a random one
                             unsigned int index = rand() % adjacent_cells.size();
                             pair<int,int> cell = adjacent_cells[index];
+#pragma omp critical
                             updated[cell.first][cell.second] = ocean[i][j];
 
                             // Birthing
                             if (ocean[i][j]*-1 == BIRTHING_AGE)
                             {
+#pragma omp critical
                                 updated[i][j] = SHARK;
                             }
-
+#pragma omp critical
                             ocean[i][j] = WATER;
                             new_pos.first = cell.first;
                             new_pos.second = cell.second;
@@ -213,20 +236,23 @@ void tick(int ocean[WIDTH][HEIGHT])
                         // One or more free cells, pick a random one
                         unsigned int index = rand() % adjacent_fish.size();
                         pair<int,int> cell = adjacent_fish[index];
+#pragma omp critical
                         updated[cell.first][cell.second] = ocean[i][j];
 
                         // Birthing
                         if (ocean[i][j]*-1 == BIRTHING_AGE)
                         {
+#pragma omp critical
                             updated[i][j] = SHARK;
                         }
-
+#pragma omp critical
                         ocean[i][j] = WATER;
                         new_pos.first = cell.first;
                         new_pos.second = cell.second;
                     }
 
                     // Update age
+#pragma omp critical
                     updated[new_pos.first][new_pos.second]--;
                 }
             }
@@ -275,7 +301,8 @@ int main(int argc, char* argv[])
     static int ocean[WIDTH][HEIGHT]; // Declared as static because of large size
     fill_ocean(ocean, fish_chance, shark_chance);
 
-
+    TIMER_CLEAR;
+    TIMER_START;
     for (unsigned int iteration = 0; iteration < num_iterations; iteration++)
     {
         tick(ocean);
@@ -290,6 +317,8 @@ int main(int argc, char* argv[])
 
         }
     }
+    TIMER_STOP;
+    printf("Time Taken: %f\n", TIMER_ELAPSED/1000000.0);
 
     return 0;
 }
