@@ -25,18 +25,18 @@ using namespace std;
 
 // Wave file header structure
 // https://ccrma.stanford.edu/courses/422/projects/WaveFormat/
-class wav_header {
+class wave_header {
 public:
-	wav_header() {
-		ChunkID = new char[4];
-		Format = new char[4];
-		Subchunk1ID = new char[4];
-		Subchunk2ID = new char[4];
-	}
-	char* ChunkID;
+    wave_header() {
+        ChunkID = new char[4];
+        Format = new char[4];
+        Subchunk1ID = new char[4];
+        Subchunk2ID = new char[4];
+    }
+    char* ChunkID;
 	int ChunkSize;
-	char* Format;
-	char* Subchunk1ID;
+    char* Format;
+    char* Subchunk1ID;
 	int Subchunk1Size;
 	short AudioFormat;
 	short NumChannels;
@@ -44,8 +44,103 @@ public:
 	int ByteRate;
 	short BlockAlign;
 	short BitsPerSample;
-	char* Subchunk2ID;
+    char* Subchunk2ID;
 	int Subchunk2Size;
+
+    /**
+     * @brief readWaveHeader Read in the header of a WAVE file
+     * @param file ifstream
+     */
+    void read(ifstream* file)
+    {
+        // Seek to the beginning of the file
+        file->seekg(0, ios::beg);
+
+        // Read header information
+        file->read(this->ChunkID, 4);
+        file->read((char*)&this->ChunkSize, sizeof(this->ChunkSize));
+        file->read(this->Format, 4);
+        file->read(this->Subchunk1ID, 4);
+        file->read((char*)&this->Subchunk1Size, sizeof(this->Subchunk1Size));
+        file->read((char*)&this->AudioFormat, sizeof(this->AudioFormat));
+        file->read((char*)&this->NumChannels, sizeof(this->NumChannels));
+        file->read((char*)&this->SampleRate, sizeof(this->SampleRate));
+        file->read((char*)&this->ByteRate, sizeof(this->ByteRate));
+        file->read((char*)&this->BlockAlign, sizeof(this->BlockAlign));
+        file->read((char*)&this->BitsPerSample, sizeof(this->BitsPerSample));
+        file->read(this->Subchunk2ID, 4);
+        file->read((char*)&this->Subchunk2Size, sizeof(this->Subchunk2Size));
+    }
+
+    /**
+     * @brief checkHeaderInfo Check header values to confirm that they are as expected
+     * @param header Header to check
+     * @return Error code
+     */
+    int check()
+    {
+        // Error checks
+        if (strcmp(this->ChunkID, "RIFF"))
+        {
+            cerr << "ChunkID was \"" << this->ChunkID << "\" not \"RIFF\"" << endl;
+            return 1;
+        }
+        else if (strcmp(this->Format, "WAVE"))
+        {
+            cerr << "Format was \"" << this->Format << "\" not \"WAVE\"" << endl;
+            return 2;
+        }
+        else if (strcmp(this->Subchunk1ID, "fmt "))
+        {
+            cerr << "Subchunk1ID was \"" << this->Subchunk1ID << "\" not \"fmt \"" << endl;
+            return 3;
+        }
+        else if (this->AudioFormat != 1)
+        {
+            cerr << "AudioFormat was \"" << this->AudioFormat << "\" not \"1\"" << endl;
+            return 4;
+        }
+        else if (strcmp(this->Subchunk2ID, "data"))
+        {
+            cerr << "Subchunk2ID was \"" << this->Subchunk2ID << "\" not \"data\"" << endl;
+            return 5;
+        }
+        else if (this->NumChannels > 2 && this->NumChannels > 0)
+        {
+            cerr << "NumChannels was not 1 or 2" << endl;
+            return 6;
+        }
+        else
+        {
+            return 0;
+        }
+    }
+
+
+    /**
+     * @brief print Print the header information to the console
+     */
+    void print()
+    {
+        // Output header information
+        cout << "==========================" << endl;
+        cout << "=== Header Information ===" << endl;
+        cout << "==========================" << endl;
+        cout << "ChunkID: " << this->ChunkID << endl;
+        cout << "ChunkSize: " << this->ChunkSize << endl;
+        cout << "Format: " << this->Format << endl;
+        cout << "Subchunk1ID: " << this->Subchunk1ID << endl;
+        cout << "Subchunk1Size: " << this->Subchunk1Size << endl;
+        cout << "AudioFormat: " << this->AudioFormat << endl;
+        cout << "NumChannels: " << this->NumChannels << endl;
+        cout << "SampleRate: " << this->SampleRate << endl;
+        cout << "ByteRate: " << this->ByteRate << endl;
+        cout << "BlockAlign: " << this->BlockAlign << endl;
+        cout << "BitsPerSample: " << this->BitsPerSample << endl;
+        cout << "Subchunk2ID: " << this->Subchunk2ID << endl;
+        cout << "Subchunk2Size: " << this->Subchunk2Size << endl;
+        cout << "==========================" << endl;
+    }
 };
 
 int main(int argc, char* argv[])
@@ -56,71 +151,26 @@ int main(int argc, char* argv[])
 		cout << "Usage: " << argv[0] << " <sound file>" << endl;
 	}
 
-	wav_header header;
-
 	ifstream file(argv[1], ios::in | ios::binary | ios::ate);
-	if (file.is_open())
+    if (file.is_open())
 	{
-		// Seek to the beginning of the file
-		file.seekg(0, ios::beg);
+        // Read header data
+        wave_header header;
+        header.read(&file);
 
-        // Read header information
-        file.read(header.ChunkID, 4);
-        file.read((char*)&header.ChunkSize, sizeof(header.ChunkSize));
-        file.read(header.Format, 4);
-        file.read(header.Subchunk1ID, 4);
-        file.read((char*)&header.Subchunk1Size, sizeof(header.Subchunk1Size));
-        file.read((char*)&header.AudioFormat, sizeof(header.AudioFormat));
-        file.read((char*)&header.NumChannels, sizeof(header.NumChannels));
-        file.read((char*)&header.SampleRate, sizeof(header.SampleRate));
-        file.read((char*)&header.ByteRate, sizeof(header.ByteRate));
-        file.read((char*)&header.BlockAlign, sizeof(header.BlockAlign));
-        file.read((char*)&header.BitsPerSample, sizeof(header.BitsPerSample));
-        file.read(header.Subchunk2ID, 4);
-        file.read((char*)&header.Subchunk2Size, sizeof(header.Subchunk2Size));
-
-        // Error checks
-        if (strcmp(header.ChunkID, "RIFF")) {
-            cerr << "ChunkID was \"" << header.ChunkID << "\" not \"RIFF\"" << endl;
-            return 1;
-        } else if (strcmp(header.Format, "WAVE")) {
-            cerr << "Format was \"" << header.Format << "\" not \"WAVE\"" << endl;
-            return 2;
-        } else if (strcmp(header.Subchunk1ID, "fmt ")) {
-            cerr << "Subchunk1ID was \"" << header.Subchunk1ID << "\" not \"fmt \"" << endl;
-            return 3;
-        } else if (header.AudioFormat != 1) {
-            cerr << "AudioFormat was \"" << header.AudioFormat << "\" not \"1\"" << endl;
-            return 4;
-        } else if (strcmp(header.Subchunk2ID, "data")) {
-            cerr << "Subchunk2ID was \"" << header.Subchunk2ID << "\" not \"data\"" << endl;
-            return 5;
-        } else if (header.NumChannels > 2 && header.NumChannels > 0) {
-            cerr << "NumChannels was not 1 or 2" << endl;
-            return 6;
+        // Check the header values to make sure they conform to what is expected
+        int error = header.check();
+        if (error > 0)
+        {
+            return error;
         }
 
+        // Print out the header
+        header.print();
+
 		// Close the file
-		file.close();
+        file.close();
 		
-		// Output header information
-		cout << "==========================" << endl;
-		cout << "=== Header Information ===" << endl;
-		cout << "==========================" << endl;
-		cout << "ChunkID: " << header.ChunkID << endl;
-		cout << "ChunkSize: " << header.ChunkSize << endl;
-		cout << "Format: " << header.Format << endl;
-		cout << "Subchunk1ID: " << header.Subchunk1ID << endl;
-		cout << "Subchunk1Size: " << header.Subchunk1Size << endl;
-		cout << "AudioFormat: " << header.AudioFormat << endl;
-		cout << "NumChannels: " << header.NumChannels << endl;
-		cout << "SampleRate: " << header.SampleRate << endl;
-		cout << "ByteRate: " << header.ByteRate << endl;
-		cout << "BlockAlign: " << header.BlockAlign << endl;
-		cout << "BitsPerSample: " << header.BitsPerSample << endl;
-		cout << "Subchunk2ID: " << header.Subchunk2ID << endl;
-		cout << "Subchunk2Size: " << header.Subchunk2Size << endl;
-		cout << "==========================" << endl;
 	}
 	else
 	{
