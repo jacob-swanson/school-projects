@@ -19,6 +19,7 @@
 
 #include <iostream>
 #include <fstream>
+#include <string.h>
 
 using namespace std;
 
@@ -63,20 +64,41 @@ int main(int argc, char* argv[])
 		// Seek to the beginning of the file
 		file.seekg(0, ios::beg);
 
-		// Read header information
-		file.read(header.ChunkID, 4);
-		file.read((char*)&header.ChunkSize, sizeof(header.ChunkSize));
-		file.read(header.Format, 4);
-		file.read(header.Subchunk1ID, 4);
-		file.read((char*)&header.Subchunk1Size, sizeof(header.Subchunk1Size));
-		file.read((char*)&header.AudioFormat, sizeof(header.AudioFormat));
-		file.read((char*)&header.NumChannels, sizeof(header.NumChannels));
-		file.read((char*)&header.SampleRate, sizeof(header.SampleRate));
-		file.read((char*)&header.ByteRate, sizeof(header.ByteRate));
-		file.read((char*)&header.BlockAlign, sizeof(header.BlockAlign));
-		file.read((char*)&header.BitsPerSample, sizeof(header.BitsPerSample));
-		file.read(header.Subchunk2ID, 4);
-		file.read((char*)&header.Subchunk2Size, sizeof(header.Subchunk2Size));
+        // Read header information
+        file.read(header.ChunkID, 4);
+        file.read((char*)&header.ChunkSize, sizeof(header.ChunkSize));
+        file.read(header.Format, 4);
+        file.read(header.Subchunk1ID, 4);
+        file.read((char*)&header.Subchunk1Size, sizeof(header.Subchunk1Size));
+        file.read((char*)&header.AudioFormat, sizeof(header.AudioFormat));
+        file.read((char*)&header.NumChannels, sizeof(header.NumChannels));
+        file.read((char*)&header.SampleRate, sizeof(header.SampleRate));
+        file.read((char*)&header.ByteRate, sizeof(header.ByteRate));
+        file.read((char*)&header.BlockAlign, sizeof(header.BlockAlign));
+        file.read((char*)&header.BitsPerSample, sizeof(header.BitsPerSample));
+        file.read(header.Subchunk2ID, 4);
+        file.read((char*)&header.Subchunk2Size, sizeof(header.Subchunk2Size));
+
+        // Error checks
+        if (strcmp(header.ChunkID, "RIFF")) {
+            cerr << "ChunkID was \"" << header.ChunkID << "\" not \"RIFF\"" << endl;
+            return 1;
+        } else if (strcmp(header.Format, "WAVE")) {
+            cerr << "Format was \"" << header.Format << "\" not \"WAVE\"" << endl;
+            return 2;
+        } else if (strcmp(header.Subchunk1ID, "fmt ")) {
+            cerr << "Subchunk1ID was \"" << header.Subchunk1ID << "\" not \"fmt \"" << endl;
+            return 3;
+        } else if (header.AudioFormat != 1) {
+            cerr << "AudioFormat was \"" << header.AudioFormat << "\" not \"1\"" << endl;
+            return 4;
+        } else if (strcmp(header.Subchunk2ID, "data")) {
+            cerr << "Subchunk2ID was \"" << header.Subchunk2ID << "\" not \"data\"" << endl;
+            return 5;
+        } else if (header.NumChannels > 2 && header.NumChannels > 0) {
+            cerr << "NumChannels was not 1 or 2" << endl;
+            return 6;
+        }
 
 		// Close the file
 		file.close();
