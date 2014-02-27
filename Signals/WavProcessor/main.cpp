@@ -143,7 +143,7 @@ public:
         int sampleOffset = 44 + (this->samplesRead * 2);
 
         file.seekg(sampleOffset, ios::beg);
-        file.read((char*)sample, 2);
+        file.read((char*)&sample, 2);
         this->samplesRead++;
 
         return true;
@@ -202,9 +202,9 @@ public:
 int main(int argc, char* argv[])
 {
 	// Check input arguments
-	if (argc != 2) {
+    if (argc != 3) {
 		cout << "Incorrect number of arguments." << endl;
-		cout << "Usage: " << argv[0] << " <sound file>" << endl;
+        cout << "Usage: " << argv[0] << " <source file> <target file>" << endl;
 	}
 
     ifstream inputFile(argv[1], ios::in | ios::binary | ios::ate);
@@ -230,7 +230,7 @@ int main(int argc, char* argv[])
         if (inputWave.NumChannels == 1)
         {
             short sample;
-            if (inputWave.getNextSample(sample, inputFile))
+            while (inputWave.getNextSample(sample, inputFile))
             {
                 inputWave.writeSample(sample, outFile);
             }
@@ -238,7 +238,7 @@ int main(int argc, char* argv[])
         else
         {
             short leftSample, rightSample;
-            if (inputWave.getNextSample(leftSample, inputFile) && inputWave.getNextSample(rightSample, inputFile))
+            while (inputWave.getNextSample(leftSample, inputFile) && inputWave.getNextSample(rightSample, inputFile))
             {
                 inputWave.writeSample(leftSample, outFile);
                 inputWave.writeSample(rightSample, outFile);
