@@ -25,13 +25,14 @@ using namespace std;
 
 // Wave file header structure
 // https://ccrma.stanford.edu/courses/422/projects/WaveFormat/
-class wave_header {
+class WaveFile {
 public:
-    wave_header() {
+    WaveFile() {
         ChunkID = new char[4];
         Format = new char[4];
         Subchunk1ID = new char[4];
         Subchunk2ID = new char[4];
+        this->samplesRead = 0;
     }
     char* ChunkID;
 	int ChunkSize;
@@ -46,6 +47,9 @@ public:
 	short BitsPerSample;
     char* Subchunk2ID;
 	int Subchunk2Size;
+
+    int samplesRead;
+    int numSamples;
 
     /**
      * @brief readWaveHeader Read in the header of a WAVE file
@@ -70,6 +74,8 @@ public:
         file->read((char*)&this->BitsPerSample, sizeof(this->BitsPerSample));
         file->read(this->Subchunk2ID, 4);
         file->read((char*)&this->Subchunk2Size, sizeof(this->Subchunk2Size));
+
+        this->numSamples = this->Subchunk2Size / 2;
     }
 
     /**
@@ -110,12 +116,38 @@ public:
             cerr << "NumChannels was not 1 or 2" << endl;
             return 6;
         }
+        else if (this->BitsPerSample != 16)
+        {
+            cerr << "BitsPerSample was \"" << this->BitsPerSample << "\" not 16" << endl;
+            return 7;
+        }
         else
         {
             return 0;
         }
     }
 
+    /**
+     * @brief getNextSample Get  the next sample in the file
+     * @param sample
+     * @return
+     */
+    bool getNextSample(short* sample, ifstream* file)
+    {
+        if (this->samplesRead >= this->numSamples)
+        {
+            return false;
+        }
+
+        // Data offset + size of samples read so far
+        int sampleOffset = 44 + (this->samplesRead * 2);
+
+        file->seekg(sampleOffset, ios::beg);
+        file->read((char*)sample, 2);
+        this->samplesRead++;
+
+        return true;
+    }
 
     /**
      * @brief print Print the header information to the console
@@ -141,6 +173,30 @@ public:
         cout << "Subchunk2Size: " << this->Subchunk2Size << endl;
         cout << "==========================" << endl;
     }
+
+    void writeHeader(ofstream* file)
+    {
+        file->seekp(0, ios::beg);
+        file->write(this->ChunkID, 4);
+        file->write((char*)&this->ChunkSize, sizeof(this->ChunkSize));
+        file->write(this->Format, 4);
+        file->write(this->Subchunk1ID, 4);
+        file->write((char*)&this->Subchunk1Size, sizeof(this->Subchunk1Size));
+        file->write((char*)&this->AudioFormat, sizeof(this->AudioFormat));
+        file->write((char*)&this->NumChannels, sizeof(this->NumChannels));
+        file->write((char*)&this->SampleRate, sizeof(this->SampleRate));
+        file->write((char*)&this->ByteRate, sizeof(this->ByteRate));
+        file->write((char*)&this->BlockAlign, sizeof(this->BlockAlign));
+        file->write((char*)&this->BitsPerSample, sizeof(this->BitsPerSample));
+        file->write(this->Subchunk2ID, 4);
+        file->write((char*)&this->Subchunk2Size, sizeof(this->Subchunk2Size));
+    }
+
+    void writeSample(short sample, ofstream* file)
+    {
+        file->write((char*)&sample, sizeof(sample));
+    }
+
 };
 
 int main(int argc, char* argv[])
@@ -151,31 +207,52 @@ int main(int argc, char* argv[])
 		cout << "Usage: " << argv[0] << " <sound file>" << endl;
 	}
 
-	ifstream file(argv[1], ios::in | ios::binary | ios::ate);
-    if (file.is_open())
+    ifstream inputFile(argv[1], ios::in | ios::binary | ios::ate);
+    if (inputFile.is_open())
 	{
         // Read header data
-        wave_header header;
-        header.read(&file);
+        WaveFile inputWave;
+        inputWave.read(&inputFile);
 
         // Check the header values to make sure they conform to what is expected
-        int error = header.check();
+        int error = inputWave.check();
         if (error > 0)
         {
             return error;
         }
 
         // Print out the header
-        header.print();
+        inputWave.print();
+
+        // Copy samples from one file to another
+        ofstream outFile(argv[2], ios::out | ios::binary | ios::ate);
+        inputWave.writeHeader(&outFile);
+        if (inputWave.NumChannels == 1)
+        {
+            short sample;
+            if (inputWave.getNextSample(&sample))
+            {
+                inputWave.writeSample(sample);
+            }
+        }
+        else
+        {
+            short leftSample, rightSample;
+            if (inputWave.getNextSample(&leftSample) && inputWave.getNextSample(&rightSample))
+            {
+                inputWave.writeSample(leftSample);
+                inputWave.writeSample(rightSample);
+            }
+        }
 
 		// Close the file
-        file.close();
+        inputFile.close();
 		
 	}
 	else
 	{
 		// Could not open file
-		cout << "Unable to open: " << argv[0] << "." << endl;
+        cerr << "Unable to open: " << argv[1] << "." << endl;
 	}
 	return 0;
 }
