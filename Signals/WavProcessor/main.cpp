@@ -55,25 +55,25 @@ public:
      * @brief readWaveHeader Read in the header of a WAVE file
      * @param file ifstream
      */
-    void read(ifstream* file)
+    void read(ifstream &file)
     {
         // Seek to the beginning of the file
-        file->seekg(0, ios::beg);
+        file.seekg(0, ios::beg);
 
         // Read header information
-        file->read(this->ChunkID, 4);
-        file->read((char*)&this->ChunkSize, sizeof(this->ChunkSize));
-        file->read(this->Format, 4);
-        file->read(this->Subchunk1ID, 4);
-        file->read((char*)&this->Subchunk1Size, sizeof(this->Subchunk1Size));
-        file->read((char*)&this->AudioFormat, sizeof(this->AudioFormat));
-        file->read((char*)&this->NumChannels, sizeof(this->NumChannels));
-        file->read((char*)&this->SampleRate, sizeof(this->SampleRate));
-        file->read((char*)&this->ByteRate, sizeof(this->ByteRate));
-        file->read((char*)&this->BlockAlign, sizeof(this->BlockAlign));
-        file->read((char*)&this->BitsPerSample, sizeof(this->BitsPerSample));
-        file->read(this->Subchunk2ID, 4);
-        file->read((char*)&this->Subchunk2Size, sizeof(this->Subchunk2Size));
+        file.read(this->ChunkID, 4);
+        file.read((char*)&this->ChunkSize, sizeof(this->ChunkSize));
+        file.read(this->Format, 4);
+        file.read(this->Subchunk1ID, 4);
+        file.read((char*)&this->Subchunk1Size, sizeof(this->Subchunk1Size));
+        file.read((char*)&this->AudioFormat, sizeof(this->AudioFormat));
+        file.read((char*)&this->NumChannels, sizeof(this->NumChannels));
+        file.read((char*)&this->SampleRate, sizeof(this->SampleRate));
+        file.read((char*)&this->ByteRate, sizeof(this->ByteRate));
+        file.read((char*)&this->BlockAlign, sizeof(this->BlockAlign));
+        file.read((char*)&this->BitsPerSample, sizeof(this->BitsPerSample));
+        file.read(this->Subchunk2ID, 4);
+        file.read((char*)&this->Subchunk2Size, sizeof(this->Subchunk2Size));
 
         this->numSamples = this->Subchunk2Size / 2;
     }
@@ -132,7 +132,7 @@ public:
      * @param sample
      * @return
      */
-    bool getNextSample(short* sample, ifstream* file)
+    bool getNextSample(short &sample, ifstream &file)
     {
         if (this->samplesRead >= this->numSamples)
         {
@@ -142,8 +142,8 @@ public:
         // Data offset + size of samples read so far
         int sampleOffset = 44 + (this->samplesRead * 2);
 
-        file->seekg(sampleOffset, ios::beg);
-        file->read((char*)sample, 2);
+        file.seekg(sampleOffset, ios::beg);
+        file.read((char*)sample, 2);
         this->samplesRead++;
 
         return true;
@@ -174,27 +174,27 @@ public:
         cout << "==========================" << endl;
     }
 
-    void writeHeader(ofstream* file)
+    void writeHeader(ofstream &file)
     {
-        file->seekp(0, ios::beg);
-        file->write(this->ChunkID, 4);
-        file->write((char*)&this->ChunkSize, sizeof(this->ChunkSize));
-        file->write(this->Format, 4);
-        file->write(this->Subchunk1ID, 4);
-        file->write((char*)&this->Subchunk1Size, sizeof(this->Subchunk1Size));
-        file->write((char*)&this->AudioFormat, sizeof(this->AudioFormat));
-        file->write((char*)&this->NumChannels, sizeof(this->NumChannels));
-        file->write((char*)&this->SampleRate, sizeof(this->SampleRate));
-        file->write((char*)&this->ByteRate, sizeof(this->ByteRate));
-        file->write((char*)&this->BlockAlign, sizeof(this->BlockAlign));
-        file->write((char*)&this->BitsPerSample, sizeof(this->BitsPerSample));
-        file->write(this->Subchunk2ID, 4);
-        file->write((char*)&this->Subchunk2Size, sizeof(this->Subchunk2Size));
+        file.seekp(0, ios::beg);
+        file.write(this->ChunkID, 4);
+        file.write((char*)&this->ChunkSize, sizeof(this->ChunkSize));
+        file.write(this->Format, 4);
+        file.write(this->Subchunk1ID, 4);
+        file.write((char*)&this->Subchunk1Size, sizeof(this->Subchunk1Size));
+        file.write((char*)&this->AudioFormat, sizeof(this->AudioFormat));
+        file.write((char*)&this->NumChannels, sizeof(this->NumChannels));
+        file.write((char*)&this->SampleRate, sizeof(this->SampleRate));
+        file.write((char*)&this->ByteRate, sizeof(this->ByteRate));
+        file.write((char*)&this->BlockAlign, sizeof(this->BlockAlign));
+        file.write((char*)&this->BitsPerSample, sizeof(this->BitsPerSample));
+        file.write(this->Subchunk2ID, 4);
+        file.write((char*)&this->Subchunk2Size, sizeof(this->Subchunk2Size));
     }
 
-    void writeSample(short sample, ofstream* file)
+    void writeSample(short sample, ofstream &file)
     {
-        file->write((char*)&sample, sizeof(sample));
+        file.write((char*)&sample, sizeof(sample));
     }
 
 };
@@ -212,7 +212,7 @@ int main(int argc, char* argv[])
 	{
         // Read header data
         WaveFile inputWave;
-        inputWave.read(&inputFile);
+        inputWave.read(inputFile);
 
         // Check the header values to make sure they conform to what is expected
         int error = inputWave.check();
@@ -226,28 +226,28 @@ int main(int argc, char* argv[])
 
         // Copy samples from one file to another
         ofstream outFile(argv[2], ios::out | ios::binary | ios::ate);
-        inputWave.writeHeader(&outFile);
+        inputWave.writeHeader(outFile);
         if (inputWave.NumChannels == 1)
         {
             short sample;
-            if (inputWave.getNextSample(&sample))
+            if (inputWave.getNextSample(sample, inputFile))
             {
-                inputWave.writeSample(sample);
+                inputWave.writeSample(sample, outFile);
             }
         }
         else
         {
             short leftSample, rightSample;
-            if (inputWave.getNextSample(&leftSample) && inputWave.getNextSample(&rightSample))
+            if (inputWave.getNextSample(leftSample, inputFile) && inputWave.getNextSample(rightSample, inputFile))
             {
-                inputWave.writeSample(leftSample);
-                inputWave.writeSample(rightSample);
+                inputWave.writeSample(leftSample, outFile);
+                inputWave.writeSample(rightSample, outFile);
             }
         }
 
 		// Close the file
         inputFile.close();
-		
+        outFile.close();
 	}
 	else
 	{
