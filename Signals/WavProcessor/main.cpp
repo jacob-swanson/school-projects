@@ -23,6 +23,7 @@
 #include <math.h>
 #include <cmath>
 #include <climits>
+#include <ctime>
 
 using namespace std;
 
@@ -312,6 +313,10 @@ int main(int argc, char* argv[])
         cout << "Usage: " << argv[0] << " <source file> <target file>" << endl;
 	}
 
+    // Store starting time
+    time_t startTime;
+    time(&startTime);
+
     // Open the input file
     ifstream inputFile(argv[1], ios::in | ios::binary | ios::ate);
     if (inputFile.is_open())
@@ -382,6 +387,15 @@ int main(int argc, char* argv[])
 	}
 
     cout << "Done." << endl;
+
+    // Store ending time
+    time_t endTime;
+    time(&endTime);
+
+    // Calculate time taken
+    double seconds = difftime(endTime, startTime);
+    cout << "Time taken: " << seconds << " seconds" << endl;
+
 
 	return 0;
 }
