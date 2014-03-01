@@ -20,6 +20,9 @@
 #include <iostream>
 #include <fstream>
 #include <string.h>
+#include <math.h>
+#include <cmath>
+#include <climits>
 
 using namespace std;
 
@@ -174,6 +177,10 @@ public:
         cout << "==========================" << endl;
     }
 
+    /**
+     * @brief writeHeader Write the header out to a file
+     * @param file
+     */
     void writeHeader(ofstream &file)
     {
         file.seekp(0, ios::beg);
@@ -192,12 +199,35 @@ public:
         file.write((char*)&this->Subchunk2Size, sizeof(this->Subchunk2Size));
     }
 
+    /**
+     * @brief writeSample Write a sample out to a file
+     * @param sample
+     * @param file
+     */
     void writeSample(short sample, ofstream &file)
     {
         file.write((char*)&sample, sizeof(sample));
     }
 
 };
+
+/**
+ * @brief addOverflow Add two shorts without overflowing
+ * @param a
+ * @param b
+ * @return
+ */
+short addOverflow(short a, short b)
+{
+    if (a > SHRT_MAX - b)
+    {
+        return SHRT_MAX;
+    }
+    else
+    {
+        return a + b;
+    }
+}
 
 int main(int argc, char* argv[])
 {
@@ -224,11 +254,49 @@ int main(int argc, char* argv[])
         // Print out the header
         inputWave.print();
 
-        // Copy samples from one file to another
         ofstream outFile(argv[2], ios::out | ios::binary | ios::ate);
         inputWave.writeHeader(outFile);
+        short maximumSample = 0;
+
+        // Find maximum amplitude
         if (inputWave.NumChannels == 1)
         {
+            // Process mono to find the maximum sample
+            short sample;
+            while (inputWave.getNextSample(sample, inputFile))
+            {
+                if (abs(sample) > maximumSample)
+                {
+                    maximumSample = abs(sample);
+                }
+            }
+        }
+        else
+        {
+            // Process stereo to find the maximum sample
+            short leftSample, rightSample;
+            while (inputWave.getNextSample(leftSample, inputFile) && inputWave.getNextSample(rightSample, inputFile))
+            {
+                if (abs(leftSample) > maximumSample)
+                {
+                    maximumSample = abs(leftSample);
+                }
+                else if (abs(rightSample) > maximumSample)
+                {
+                    maximumSample = abs(rightSample);
+                }
+            }
+        }
+
+        cout << "Maximum Sample: " << maximumSample << endl;
+        cout << "Sine Wave Amplitude: " << maximumSample/2 << endl;
+
+        inputWave.samplesRead = 0;
+
+        // Add sine wave
+        if (inputWave.NumChannels == 1)
+        {
+            // Process mono
             short sample;
             while (inputWave.getNextSample(sample, inputFile))
             {
@@ -237,14 +305,29 @@ int main(int argc, char* argv[])
         }
         else
         {
+            // Process stereo
             short leftSample, rightSample;
+            int sampleNumber = 0;
+
             while (inputWave.getNextSample(leftSample, inputFile) && inputWave.getNextSample(rightSample, inputFile))
             {
-                inputWave.writeSample(leftSample, outFile);
-                inputWave.writeSample(rightSample, outFile);
+                // Expicit casting to double
+                double t = ((double)sampleNumber) / ((double)inputWave.SampleRate);
+
+                // Should not overflow
+                short sineWave = (maximumSample/2) * sin(2.0*3.14*2500.0*t);
+
+                // Can and will overflow
+                short newLeftSample = addOverflow(sineWave, leftSample);
+                short newRightSample = addOverflow(sineWave, rightSample);
+
+                // Write the samples
+                inputWave.writeSample(newLeftSample, outFile);
+                inputWave.writeSample(newRightSample, outFile);
+
+                sampleNumber++;
             }
         }
-
 		// Close the file
         inputFile.close();
         outFile.close();
