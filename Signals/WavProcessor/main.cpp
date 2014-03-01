@@ -338,53 +338,63 @@ int main(int argc, char* argv[])
 
         // Open the output file, disreguarding the contents of it
         ofstream outFile(argv[2], ios::out | ios::binary | ios::trunc);
-
-        // Rewrite the header
-        waveFile.writeHeader(outFile);
-
-        // Find maximum amplitude
-        cout << "Finding maximum amplitude..." << endl;
-        short maximumSample = waveFile.getMaxSample(inputFile);
-
-        // Output the amplitude of the sine wave that will be added
-        cout << "Sine Wave Amplitude: " << maximumSample/2 << endl;
-
-        // Add sine wave
-        // Iteration number is number of samples / number of channels
-        cout << "Adding sine wave..." << endl;
-        unsigned int iterationNumber = 0;
-        while (waveFile.hasMoreSamples())
+        if (outFile.is_open())
         {
-            // Expicit casting to double for time calculation
-            double t = ((double)iterationNumber) / ((double)waveFile.SampleRate);
 
-            // Calculation of sine wave sample, should not overflow
-            // Half of maximum amplitude * sine wave at 2500 Hz
-            short sineWave = (maximumSample/2) * sin(2.0*3.14*2500.0*t);
+            // Rewrite the header
+            waveFile.writeHeader(outFile);
 
-            // Loop through the channels
-            for (int i = 0; i < waveFile.NumChannels; i++)
+            // Find maximum amplitude
+            cout << "Finding maximum amplitude..." << endl;
+            short maximumSample = waveFile.getMaxSample(inputFile);
+
+            // Output the amplitude of the sine wave that will be added
+            cout << "Sine Wave Amplitude: " << maximumSample/2 << endl;
+
+            // Add sine wave
+            // Iteration number is number of samples / number of channels
+            cout << "Adding sine wave..." << endl;
+            unsigned int iterationNumber = 0;
+            while (waveFile.hasMoreSamples())
             {
-                // Read new sample in
-                short sample = waveFile.getNextSample(inputFile);
+                // Expicit casting to double for time calculation
+                double t = ((double)iterationNumber) / ((double)waveFile.SampleRate);
 
-                // Calculation of new sample, can overflow
-                short newSample = addOverflow(sineWave, sample);
+                // Calculation of sine wave sample, should not overflow
+                // Half of maximum amplitude * sine wave at 2500 Hz
+                short sineWave = (maximumSample/2) * sin(2.0*3.14*2500.0*t);
 
-                // Write new sample to output file
-                waveFile.writeSample(newSample, outFile);
+                // Loop through the channels
+                for (int i = 0; i < waveFile.NumChannels; i++)
+                {
+                    // Read new sample in
+                    short sample = waveFile.getNextSample(inputFile);
+
+                    // Calculation of new sample, can overflow
+                    short newSample = addOverflow(sineWave, sample);
+
+                    // Write new sample to output file
+                    waveFile.writeSample(newSample, outFile);
+                }
+                iterationNumber++;
             }
-            iterationNumber++;
-        }
 
-        // Close the files
-        inputFile.close();
-        outFile.close();
+            // Close the files
+            inputFile.close();
+            outFile.close();
+        }
+        else
+        {
+            // Could not open output file
+            cerr << "Unable to open: " << argv[2] << endl;
+            return 1;
+        }
 	}
 	else
 	{
-		// Could not open file
+        // Could not open input file
         cerr << "Unable to open: " << argv[1] << "." << endl;
+        return 1;
 	}
 
     cout << "Done." << endl;
