@@ -319,10 +319,10 @@ int main(int argc, char* argv[])
 
     // Open the input file
     ifstream inputFile(argv[1], ios::in | ios::binary | ios::ate);
+    WaveFile waveFile;
     if (inputFile.is_open())
 	{
         // Read header data
-        WaveFile waveFile;
         waveFile.read(inputFile);
 
         // Check the header values to make sure they conform to what is expected
@@ -362,6 +362,7 @@ int main(int argc, char* argv[])
             // Half of maximum amplitude * sine wave at 2500 Hz
             short sineWave = (maximumSample/2) * sin(2.0*3.14*2500.0*t);
 
+            // Loop through the channels
             for (int i = 0; i < waveFile.NumChannels; i++)
             {
                 // Read new sample in
@@ -376,7 +377,7 @@ int main(int argc, char* argv[])
             iterationNumber++;
         }
 
-        // Close the file
+        // Close the files
         inputFile.close();
         outFile.close();
 	}
@@ -394,8 +395,24 @@ int main(int argc, char* argv[])
 
     // Calculate time taken
     double seconds = difftime(endTime, startTime);
-    cout << "Time taken: " << seconds << " seconds" << endl;
+    cout << "Execution Time: " << seconds << " seconds" << endl;
 
+    // Create summary text file
+    ofstream summaryFile("Summary.txt", ios::out | ios::trunc);
+    if (summaryFile.is_open())
+    {
+        summaryFile << "Input File: " << argv[1] << endl;
+        summaryFile << "Output File: " << argv[2] << endl;
+        summaryFile << "Sampling Frequency (Hz): " << waveFile.SampleRate << endl;
+        summaryFile << "Length (s): " << (waveFile.numSamples / waveFile.NumChannels) / waveFile.SampleRate << endl;
+        summaryFile << "Execution time (s): " << seconds << endl;
+        summaryFile.close();
+    }
+    else
+    {
+        cerr << "Unable to open summary file." << endl;
+        return 1;
+    }
 
 	return 0;
 }
