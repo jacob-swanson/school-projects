@@ -36,23 +36,27 @@ public:
         Subchunk1ID = new char[4];
         Subchunk2ID = new char[4];
         this->samplesRead = 0;
+        this->samplesWritten = 0;
+        this->numSamples = 0;
     }
+
     char* ChunkID;
-	int ChunkSize;
+    unsigned int ChunkSize;
     char* Format;
     char* Subchunk1ID;
-	int Subchunk1Size;
-	short AudioFormat;
-	short NumChannels;
-	int SampleRate;
-	int ByteRate;
-	short BlockAlign;
-	short BitsPerSample;
+    unsigned int Subchunk1Size;
+    unsigned short AudioFormat;
+    unsigned short NumChannels;
+    unsigned int SampleRate;
+    unsigned int ByteRate;
+    unsigned short BlockAlign;
+    unsigned short BitsPerSample;
     char* Subchunk2ID;
-	int Subchunk2Size;
+    unsigned int Subchunk2Size;
 
-    int samplesRead;
-    int numSamples;
+    unsigned int samplesRead;
+    unsigned int samplesWritten;
+    unsigned int numSamples;
 
     /**
      * @brief readWaveHeader Read in the header of a WAVE file
@@ -78,6 +82,7 @@ public:
         file.read(this->Subchunk2ID, 4);
         file.read((char*)&this->Subchunk2Size, sizeof(this->Subchunk2Size));
 
+        // Assuming 16 bit samples
         this->numSamples = this->Subchunk2Size / 2;
     }
 
@@ -86,42 +91,42 @@ public:
      * @param header Header to check
      * @return Error code
      */
-    int check()
+    int check(ostream &out)
     {
-        // Error checks
+        // Error to see if the header was as expected
         if (strcmp(this->ChunkID, "RIFF"))
         {
-            cerr << "ChunkID was \"" << this->ChunkID << "\" not \"RIFF\"" << endl;
+            out << "ChunkID was \"" << this->ChunkID << "\" not \"RIFF\"" << endl;
             return 1;
         }
         else if (strcmp(this->Format, "WAVE"))
         {
-            cerr << "Format was \"" << this->Format << "\" not \"WAVE\"" << endl;
+            out << "Format was \"" << this->Format << "\" not \"WAVE\"" << endl;
             return 2;
         }
         else if (strcmp(this->Subchunk1ID, "fmt "))
         {
-            cerr << "Subchunk1ID was \"" << this->Subchunk1ID << "\" not \"fmt \"" << endl;
+            out << "Subchunk1ID was \"" << this->Subchunk1ID << "\" not \"fmt \"" << endl;
             return 3;
         }
         else if (this->AudioFormat != 1)
         {
-            cerr << "AudioFormat was \"" << this->AudioFormat << "\" not \"1\"" << endl;
+            out << "AudioFormat was \"" << this->AudioFormat << "\" not \"1\"" << endl;
             return 4;
         }
         else if (strcmp(this->Subchunk2ID, "data"))
         {
-            cerr << "Subchunk2ID was \"" << this->Subchunk2ID << "\" not \"data\"" << endl;
+            out << "Subchunk2ID was \"" << this->Subchunk2ID << "\" not \"data\"" << endl;
             return 5;
         }
         else if (this->NumChannels > 2 && this->NumChannels > 0)
         {
-            cerr << "NumChannels was not 1 or 2" << endl;
+            out << "NumChannels was not 1 or 2" << endl;
             return 6;
         }
         else if (this->BitsPerSample != 16)
         {
-            cerr << "BitsPerSample was \"" << this->BitsPerSample << "\" not 16" << endl;
+            out << "BitsPerSample was \"" << this->BitsPerSample << "\" not 16" << endl;
             return 7;
         }
         else
@@ -135,46 +140,46 @@ public:
      * @param sample
      * @return
      */
-    bool getNextSample(short &sample, ifstream &file)
+    short getNextSample(ifstream &file)
     {
-        if (this->samplesRead >= this->numSamples)
-        {
-            return false;
-        }
-
         // Data offset + size of samples read so far
         int sampleOffset = 44 + (this->samplesRead * 2);
 
+        // Read sample
+        short sample;
         file.seekg(sampleOffset, ios::beg);
         file.read((char*)&sample, 2);
+
+        // Increment number of samples read
         this->samplesRead++;
 
-        return true;
+        // Return the sample
+        return sample;
     }
 
     /**
      * @brief print Print the header information to the console
      */
-    void print()
+    void printHeader(ostream &out)
     {
-        // Output header information
-        cout << "==========================" << endl;
-        cout << "=== Header Information ===" << endl;
-        cout << "==========================" << endl;
-        cout << "ChunkID: " << this->ChunkID << endl;
-        cout << "ChunkSize: " << this->ChunkSize << endl;
-        cout << "Format: " << this->Format << endl;
-        cout << "Subchunk1ID: " << this->Subchunk1ID << endl;
-        cout << "Subchunk1Size: " << this->Subchunk1Size << endl;
-        cout << "AudioFormat: " << this->AudioFormat << endl;
-        cout << "NumChannels: " << this->NumChannels << endl;
-        cout << "SampleRate: " << this->SampleRate << endl;
-        cout << "ByteRate: " << this->ByteRate << endl;
-        cout << "BlockAlign: " << this->BlockAlign << endl;
-        cout << "BitsPerSample: " << this->BitsPerSample << endl;
-        cout << "Subchunk2ID: " << this->Subchunk2ID << endl;
-        cout << "Subchunk2Size: " << this->Subchunk2Size << endl;
-        cout << "==========================" << endl;
+        // Print the header information
+        out << "==========================" << endl;
+        out << "=== Header Information ===" << endl;
+        out << "==========================" << endl;
+        out << "ChunkID: " << this->ChunkID << endl;
+        out << "ChunkSize: " << this->ChunkSize << endl;
+        out << "Format: " << this->Format << endl;
+        out << "Subchunk1ID: " << this->Subchunk1ID << endl;
+        out << "Subchunk1Size: " << this->Subchunk1Size << endl;
+        out << "AudioFormat: " << this->AudioFormat << endl;
+        out << "NumChannels: " << this->NumChannels << endl;
+        out << "SampleRate: " << this->SampleRate << endl;
+        out << "ByteRate: " << this->ByteRate << endl;
+        out << "BlockAlign: " << this->BlockAlign << endl;
+        out << "BitsPerSample: " << this->BitsPerSample << endl;
+        out << "Subchunk2ID: " << this->Subchunk2ID << endl;
+        out << "Subchunk2Size: " << this->Subchunk2Size << endl;
+        out << "==========================" << endl;
     }
 
     /**
@@ -183,6 +188,7 @@ public:
      */
     void writeHeader(ofstream &file)
     {
+        // Write out the header information
         file.seekp(0, ios::beg);
         file.write(this->ChunkID, 4);
         file.write((char*)&this->ChunkSize, sizeof(this->ChunkSize));
@@ -206,25 +212,94 @@ public:
      */
     void writeSample(short sample, ofstream &file)
     {
+        // Calculate sample offset
+        int sampleOffset = 44 + (this->samplesWritten * 2);
+
+        // Seek to location of next sample and write
+        file.seekp(sampleOffset);
         file.write((char*)&sample, sizeof(sample));
+
+        // Increment number samples written
+        this->samplesWritten++;
     }
 
+    /**
+     * @brief getMaxSample Get the maximum sample value from the file, multiple channels don't matter
+     * @param file
+     * @return
+     */
+    short getMaxSample(ifstream &file)
+    {
+        // Process samples to find the maximum
+        short maximumSample = 0;
+        while (this->hasMoreSamples())
+        {
+            short sample = this->getNextSample(file);
+            // |sample| > maximumSample
+            if (abs(sample) > maximumSample)
+            {
+                maximumSample = abs(sample);
+            }
+        }
+
+        // Reset the reader
+        this->resetRead();
+
+        // Return the maximum sample found
+        return maximumSample;
+    }
+
+    /**
+     * @brief resetRead Reset the number of samples read
+     */
+    void resetRead()
+    {
+        this->samplesRead = 0;
+    }
+
+    /**
+     * @brief resetWrite Reset the number of samples written
+     */
+    void resetWrite()
+    {
+        this->samplesWritten = 0;
+    }
+
+    /**
+     * @brief hasMoreSamples Check if wave file has more samples
+     * @return
+     */
+    bool hasMoreSamples()
+    {
+        // Check if the file has more samples to read
+        if (this->samplesRead >= this->numSamples)
+        {
+            return false;
+        }
+        else
+        {
+            return true;
+        }
+    }
 };
 
 /**
  * @brief addOverflow Add two shorts without overflowing
  * @param a
  * @param b
- * @return
+ * @return Either a + b, or SHRT_MAX if a + b would overflow
  */
 short addOverflow(short a, short b)
 {
+    // Check if a is greater than the remainder
     if (a > SHRT_MAX - b)
     {
+        // Will overflow, return max value
         return SHRT_MAX;
     }
     else
     {
+        // Will not overflow, add the numbers
         return a + b;
     }
 }
@@ -237,98 +312,66 @@ int main(int argc, char* argv[])
         cout << "Usage: " << argv[0] << " <source file> <target file>" << endl;
 	}
 
+    // Open the input file
     ifstream inputFile(argv[1], ios::in | ios::binary | ios::ate);
     if (inputFile.is_open())
 	{
         // Read header data
-        WaveFile inputWave;
-        inputWave.read(inputFile);
+        WaveFile waveFile;
+        waveFile.read(inputFile);
 
         // Check the header values to make sure they conform to what is expected
-        int error = inputWave.check();
+        int error = waveFile.check(cerr);
         if (error > 0)
         {
+            // Exit the program if the check failed
             return error;
         }
 
         // Print out the header
-        inputWave.print();
+        waveFile.printHeader(cout);
 
-        ofstream outFile(argv[2], ios::out | ios::binary | ios::ate);
-        inputWave.writeHeader(outFile);
-        short maximumSample = 0;
+        // Open the output file, disreguarding the contents of it
+        ofstream outFile(argv[2], ios::out | ios::binary | ios::trunc);
+
+        // Rewrite the header
+        waveFile.writeHeader(outFile);
 
         // Find maximum amplitude
-        if (inputWave.NumChannels == 1)
-        {
-            // Process mono to find the maximum sample
-            short sample;
-            while (inputWave.getNextSample(sample, inputFile))
-            {
-                if (abs(sample) > maximumSample)
-                {
-                    maximumSample = abs(sample);
-                }
-            }
-        }
-        else
-        {
-            // Process stereo to find the maximum sample
-            short leftSample, rightSample;
-            while (inputWave.getNextSample(leftSample, inputFile) && inputWave.getNextSample(rightSample, inputFile))
-            {
-                if (abs(leftSample) > maximumSample)
-                {
-                    maximumSample = abs(leftSample);
-                }
-                else if (abs(rightSample) > maximumSample)
-                {
-                    maximumSample = abs(rightSample);
-                }
-            }
-        }
+        cout << "Finding maximum amplitude..." << endl;
+        short maximumSample = waveFile.getMaxSample(inputFile);
 
-        cout << "Maximum Sample: " << maximumSample << endl;
+        // Output the amplitude of the sine wave that will be added
         cout << "Sine Wave Amplitude: " << maximumSample/2 << endl;
 
-        inputWave.samplesRead = 0;
-
         // Add sine wave
-        if (inputWave.NumChannels == 1)
+        // Iteration number is number of samples / number of channels
+        cout << "Adding sine wave..." << endl;
+        unsigned int iterationNumber = 0;
+        while (waveFile.hasMoreSamples())
         {
-            // Process mono
-            short sample;
-            while (inputWave.getNextSample(sample, inputFile))
+            // Expicit casting to double for time calculation
+            double t = ((double)iterationNumber) / ((double)waveFile.SampleRate);
+
+            // Calculation of sine wave sample, should not overflow
+            // Half of maximum amplitude * sine wave at 2500 Hz
+            short sineWave = (maximumSample/2) * sin(2.0*3.14*2500.0*t);
+
+            for (int i = 0; i < waveFile.NumChannels; i++)
             {
-                inputWave.writeSample(sample, outFile);
+                // Read new sample in
+                short sample = waveFile.getNextSample(inputFile);
+
+                // Calculation of new sample, can overflow
+                short newSample = addOverflow(sineWave, sample);
+
+                // Write new sample to output file
+                waveFile.writeSample(newSample, outFile);
             }
+            iterationNumber++;
         }
-        else
-        {
-            // Process stereo
-            short leftSample, rightSample;
-            int sampleNumber = 0;
 
-            while (inputWave.getNextSample(leftSample, inputFile) && inputWave.getNextSample(rightSample, inputFile))
-            {
-                // Expicit casting to double
-                double t = ((double)sampleNumber) / ((double)inputWave.SampleRate);
-
-                // Should not overflow
-                short sineWave = (maximumSample/2) * sin(2.0*3.14*2500.0*t);
-
-                // Can and will overflow
-                short newLeftSample = addOverflow(sineWave, leftSample);
-                short newRightSample = addOverflow(sineWave, rightSample);
-
-                // Write the samples
-                inputWave.writeSample(newLeftSample, outFile);
-                inputWave.writeSample(newRightSample, outFile);
-
-                sampleNumber++;
-            }
-        }
-		// Close the file
+        // Close the file
         inputFile.close();
         outFile.close();
 	}
@@ -337,6 +380,9 @@ int main(int argc, char* argv[])
 		// Could not open file
         cerr << "Unable to open: " << argv[1] << "." << endl;
 	}
+
+    cout << "Done." << endl;
+
 	return 0;
 }
 
