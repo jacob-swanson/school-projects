@@ -23,30 +23,31 @@
 
 using namespace std;
 
+struct wave_header {
+    char ChunkID[4];
+    int ChunkSize;
+    char Format[4];
+    char Subchunk1ID[4];
+    int Subchunk1Size;
+    short AudioFormat;
+    short NumChannels;
+    int SampleRate;
+    int ByteRate;
+    short BlockAlign;
+    short BitsPerSample;
+    char Subchunk2ID[4];
+    int Subchunk2Size;
+};
+
 // Wave file header structure
 // https://ccrma.stanford.edu/courses/422/projects/WaveFormat/
 class WaveFile {
 public:
     WaveFile() {
-        ChunkID = new char[4];
-        Format = new char[4];
-        Subchunk1ID = new char[4];
-        Subchunk2ID = new char[4];
         this->samplesRead = 0;
     }
-    char* ChunkID;
-	int ChunkSize;
-    char* Format;
-    char* Subchunk1ID;
-	int Subchunk1Size;
-	short AudioFormat;
-	short NumChannels;
-	int SampleRate;
-	int ByteRate;
-	short BlockAlign;
-	short BitsPerSample;
-    char* Subchunk2ID;
-	int Subchunk2Size;
+
+    wave_header header;
 
     int samplesRead;
     int numSamples;
@@ -55,27 +56,15 @@ public:
      * @brief readWaveHeader Read in the header of a WAVE file
      * @param file ifstream
      */
-    void read(ifstream &file)
+    void read(istream &file)
     {
         // Seek to the beginning of the file
         file.seekg(0, ios::beg);
 
         // Read header information
-        file.read(this->ChunkID, 4);
-        file.read((char*)&this->ChunkSize, sizeof(this->ChunkSize));
-        file.read(this->Format, 4);
-        file.read(this->Subchunk1ID, 4);
-        file.read((char*)&this->Subchunk1Size, sizeof(this->Subchunk1Size));
-        file.read((char*)&this->AudioFormat, sizeof(this->AudioFormat));
-        file.read((char*)&this->NumChannels, sizeof(this->NumChannels));
-        file.read((char*)&this->SampleRate, sizeof(this->SampleRate));
-        file.read((char*)&this->ByteRate, sizeof(this->ByteRate));
-        file.read((char*)&this->BlockAlign, sizeof(this->BlockAlign));
-        file.read((char*)&this->BitsPerSample, sizeof(this->BitsPerSample));
-        file.read(this->Subchunk2ID, 4);
-        file.read((char*)&this->Subchunk2Size, sizeof(this->Subchunk2Size));
+        file.read((char*)&this->header, sizeof(this->header));
 
-        this->numSamples = this->Subchunk2Size / 2;
+        this->numSamples = this->header.Subchunk2Size / 2;
     }
 
     /**
@@ -86,40 +75,35 @@ public:
     int check()
     {
         // Error checks
-        if (strcmp(this->ChunkID, "RIFF"))
+        if (string(this->header.ChunkID, 4).compare("RIFF"))
         {
-            cerr << "ChunkID was \"" << this->ChunkID << "\" not \"RIFF\"" << endl;
+            cerr << "ChunkID was \"" << string(this->header.ChunkID, 4) << "\" not \"RIFF\"" << endl;
             return 1;
         }
-        else if (strcmp(this->Format, "WAVE"))
+        else if (string(this->header.Format, 4).compare("WAVE"))
         {
-            cerr << "Format was \"" << this->Format << "\" not \"WAVE\"" << endl;
+            cerr << "Format was \"" << string(this->header.Format, 4) << "\" not \"WAVE\"" << endl;
             return 2;
         }
-        else if (strcmp(this->Subchunk1ID, "fmt "))
+        else if (string(this->header.Subchunk1ID, 4).compare("fmt "))
         {
-            cerr << "Subchunk1ID was \"" << this->Subchunk1ID << "\" not \"fmt \"" << endl;
+            cerr << "Subchunk1ID was \"" << string(this->header.Subchunk1ID, 4) << "\" not \"fmt \"" << endl;
             return 3;
         }
-        else if (this->AudioFormat != 1)
+        else if (this->header.AudioFormat != 1)
         {
-            cerr << "AudioFormat was \"" << this->AudioFormat << "\" not \"1\"" << endl;
+            cerr << "AudioFormat was \"" << this->header.AudioFormat << "\" not \"1\"" << endl;
             return 4;
         }
-        else if (strcmp(this->Subchunk2ID, "data"))
+        else if (string(this->header.Subchunk2ID, 4).compare("data"))
         {
-            cerr << "Subchunk2ID was \"" << this->Subchunk2ID << "\" not \"data\"" << endl;
+            cerr << "Subchunk2ID was \"" << string(this->header.Subchunk2ID, 4) << "\" not \"data\"" << endl;
             return 5;
         }
-        else if (this->NumChannels > 2 && this->NumChannels > 0)
+        else if (this->header.BitsPerSample != 16)
         {
-            cerr << "NumChannels was not 1 or 2" << endl;
+            cerr << "BitsPerSample was \"" << this->header.BitsPerSample << "\" not 16" << endl;
             return 6;
-        }
-        else if (this->BitsPerSample != 16)
-        {
-            cerr << "BitsPerSample was \"" << this->BitsPerSample << "\" not 16" << endl;
-            return 7;
         }
         else
         {
@@ -142,6 +126,7 @@ public:
         // Data offset + size of samples read so far
         int sampleOffset = 44 + (this->samplesRead * 2);
 
+        // Read a short
         file.seekg(sampleOffset, ios::beg);
         file.read((char*)&sample, 2);
         this->samplesRead++;
@@ -158,38 +143,27 @@ public:
         cout << "==========================" << endl;
         cout << "=== Header Information ===" << endl;
         cout << "==========================" << endl;
-        cout << "ChunkID: " << this->ChunkID << endl;
-        cout << "ChunkSize: " << this->ChunkSize << endl;
-        cout << "Format: " << this->Format << endl;
-        cout << "Subchunk1ID: " << this->Subchunk1ID << endl;
-        cout << "Subchunk1Size: " << this->Subchunk1Size << endl;
-        cout << "AudioFormat: " << this->AudioFormat << endl;
-        cout << "NumChannels: " << this->NumChannels << endl;
-        cout << "SampleRate: " << this->SampleRate << endl;
-        cout << "ByteRate: " << this->ByteRate << endl;
-        cout << "BlockAlign: " << this->BlockAlign << endl;
-        cout << "BitsPerSample: " << this->BitsPerSample << endl;
-        cout << "Subchunk2ID: " << this->Subchunk2ID << endl;
-        cout << "Subchunk2Size: " << this->Subchunk2Size << endl;
+        cout << "ChunkID: "         << string(this->header.ChunkID, 4) << endl;
+        cout << "ChunkSize: "       << this->header.ChunkSize << endl;
+        cout << "Format: "          << string(this->header.Format, 4) << endl;
+        cout << "Subchunk1ID: "     << string(this->header.Subchunk1ID, 4) << endl;
+        cout << "Subchunk1Size: "   << this->header.Subchunk1Size << endl;
+        cout << "AudioFormat: "     << this->header.AudioFormat << endl;
+        cout << "NumChannels: "     << this->header.NumChannels << endl;
+        cout << "SampleRate: "      << this->header.SampleRate << endl;
+        cout << "ByteRate: "        << this->header.ByteRate << endl;
+        cout << "BlockAlign: "      << this->header.BlockAlign << endl;
+        cout << "BitsPerSample: "   << this->header.BitsPerSample << endl;
+        cout << "Subchunk2ID: "     << string(this->header.Subchunk2ID, 4) << endl;
+        cout << "Subchunk2Size: "   << this->header.Subchunk2Size << endl;
         cout << "==========================" << endl;
     }
 
     void writeHeader(ofstream &file)
     {
         file.seekp(0, ios::beg);
-        file.write(this->ChunkID, 4);
-        file.write((char*)&this->ChunkSize, sizeof(this->ChunkSize));
-        file.write(this->Format, 4);
-        file.write(this->Subchunk1ID, 4);
-        file.write((char*)&this->Subchunk1Size, sizeof(this->Subchunk1Size));
-        file.write((char*)&this->AudioFormat, sizeof(this->AudioFormat));
-        file.write((char*)&this->NumChannels, sizeof(this->NumChannels));
-        file.write((char*)&this->SampleRate, sizeof(this->SampleRate));
-        file.write((char*)&this->ByteRate, sizeof(this->ByteRate));
-        file.write((char*)&this->BlockAlign, sizeof(this->BlockAlign));
-        file.write((char*)&this->BitsPerSample, sizeof(this->BitsPerSample));
-        file.write(this->Subchunk2ID, 4);
-        file.write((char*)&this->Subchunk2Size, sizeof(this->Subchunk2Size));
+
+        file.write((char*)&this->header, sizeof(this->header));
     }
 
     void writeSample(short sample, ofstream &file)
@@ -214,6 +188,9 @@ int main(int argc, char* argv[])
         WaveFile inputWave;
         inputWave.read(inputFile);
 
+        // Print out the header
+        inputWave.print();
+
         // Check the header values to make sure they conform to what is expected
         int error = inputWave.check();
         if (error > 0)
@@ -221,13 +198,11 @@ int main(int argc, char* argv[])
             return error;
         }
 
-        // Print out the header
-        inputWave.print();
 
         // Copy samples from one file to another
         ofstream outFile(argv[2], ios::out | ios::binary | ios::ate);
         inputWave.writeHeader(outFile);
-        if (inputWave.NumChannels == 1)
+        if (inputWave.header.NumChannels == 1)
         {
             short sample;
             while (inputWave.getNextSample(sample, inputFile))
