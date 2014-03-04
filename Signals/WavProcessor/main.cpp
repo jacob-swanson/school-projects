@@ -27,33 +27,33 @@
 
 using namespace std;
 
+struct wave_header {
+    char ChunkID[4];
+    int ChunkSize;
+    char Format[4];
+    char Subchunk1ID[4];
+    int Subchunk1Size;
+    short AudioFormat;
+    short NumChannels;
+    int SampleRate;
+    int ByteRate;
+    short BlockAlign;
+    short BitsPerSample;
+    char Subchunk2ID[4];
+    int Subchunk2Size;
+};
+
 // Wave file header structure
 // https://ccrma.stanford.edu/courses/422/projects/WaveFormat/
 class WaveFile {
 public:
     WaveFile() {
-        ChunkID = new char[4];
-        Format = new char[4];
-        Subchunk1ID = new char[4];
-        Subchunk2ID = new char[4];
         this->samplesRead = 0;
         this->samplesWritten = 0;
         this->numSamples = 0;
     }
 
-    char* ChunkID;
-    unsigned int ChunkSize;
-    char* Format;
-    char* Subchunk1ID;
-    unsigned int Subchunk1Size;
-    unsigned short AudioFormat;
-    unsigned short NumChannels;
-    unsigned int SampleRate;
-    unsigned int ByteRate;
-    unsigned short BlockAlign;
-    unsigned short BitsPerSample;
-    char* Subchunk2ID;
-    unsigned int Subchunk2Size;
+    wave_header header;
 
     unsigned int samplesRead;
     unsigned int samplesWritten;
@@ -63,28 +63,15 @@ public:
      * @brief readWaveHeader Read in the header of a WAVE file
      * @param file ifstream
      */
-    void read(ifstream &file)
+    void read(istream &file)
     {
         // Seek to the beginning of the file
         file.seekg(0, ios::beg);
 
         // Read header information
-        file.read(this->ChunkID, 4);
-        file.read((char*)&this->ChunkSize, sizeof(this->ChunkSize));
-        file.read(this->Format, 4);
-        file.read(this->Subchunk1ID, 4);
-        file.read((char*)&this->Subchunk1Size, sizeof(this->Subchunk1Size));
-        file.read((char*)&this->AudioFormat, sizeof(this->AudioFormat));
-        file.read((char*)&this->NumChannels, sizeof(this->NumChannels));
-        file.read((char*)&this->SampleRate, sizeof(this->SampleRate));
-        file.read((char*)&this->ByteRate, sizeof(this->ByteRate));
-        file.read((char*)&this->BlockAlign, sizeof(this->BlockAlign));
-        file.read((char*)&this->BitsPerSample, sizeof(this->BitsPerSample));
-        file.read(this->Subchunk2ID, 4);
-        file.read((char*)&this->Subchunk2Size, sizeof(this->Subchunk2Size));
+        file.read((char*)&this->header, sizeof(this->header));
 
-        // Assuming 16 bit samples
-        this->numSamples = this->Subchunk2Size / 2;
+        this->numSamples = this->header.Subchunk2Size / 2;
     }
 
     /**
@@ -92,43 +79,38 @@ public:
      * @param header Header to check
      * @return Error code
      */
-    int check(ostream &out)
+    int check()
     {
-        // Error to see if the header was as expected
-        if (strcmp(this->ChunkID, "RIFF"))
+        // Error checks
+        if (string(this->header.ChunkID, 4).compare("RIFF"))
         {
-            out << "ChunkID was \"" << this->ChunkID << "\" not \"RIFF\"" << endl;
+            cerr << "ChunkID was \"" << string(this->header.ChunkID, 4) << "\" not \"RIFF\"" << endl;
             return 1;
         }
-        else if (strcmp(this->Format, "WAVE"))
+        else if (string(this->header.Format, 4).compare("WAVE"))
         {
-            out << "Format was \"" << this->Format << "\" not \"WAVE\"" << endl;
+            cerr << "Format was \"" << string(this->header.Format, 4) << "\" not \"WAVE\"" << endl;
             return 2;
         }
-        else if (strcmp(this->Subchunk1ID, "fmt "))
+        else if (string(this->header.Subchunk1ID, 4).compare("fmt "))
         {
-            out << "Subchunk1ID was \"" << this->Subchunk1ID << "\" not \"fmt \"" << endl;
+            cerr << "Subchunk1ID was \"" << string(this->header.Subchunk1ID, 4) << "\" not \"fmt \"" << endl;
             return 3;
         }
-        else if (this->AudioFormat != 1)
+        else if (this->header.AudioFormat != 1)
         {
-            out << "AudioFormat was \"" << this->AudioFormat << "\" not \"1\"" << endl;
+            cerr << "AudioFormat was \"" << this->header.AudioFormat << "\" not \"1\"" << endl;
             return 4;
         }
-        else if (strcmp(this->Subchunk2ID, "data"))
+        else if (string(this->header.Subchunk2ID, 4).compare("data"))
         {
-            out << "Subchunk2ID was \"" << this->Subchunk2ID << "\" not \"data\"" << endl;
+            cerr << "Subchunk2ID was \"" << string(this->header.Subchunk2ID, 4) << "\" not \"data\"" << endl;
             return 5;
         }
-        else if (this->NumChannels > 2 && this->NumChannels > 0)
+        else if (this->header.BitsPerSample != 16)
         {
-            out << "NumChannels was not 1 or 2" << endl;
+            cerr << "BitsPerSample was \"" << this->header.BitsPerSample << "\" not 16" << endl;
             return 6;
-        }
-        else if (this->BitsPerSample != 16)
-        {
-            out << "BitsPerSample was \"" << this->BitsPerSample << "\" not 16" << endl;
-            return 7;
         }
         else
         {
@@ -161,26 +143,26 @@ public:
     /**
      * @brief print Print the header information to the console
      */
-    void printHeader(ostream &out)
+    void printHeader()
     {
-        // Print the header information
-        out << "==========================" << endl;
-        out << "=== Header Information ===" << endl;
-        out << "==========================" << endl;
-        out << "ChunkID: " << this->ChunkID << endl;
-        out << "ChunkSize: " << this->ChunkSize << endl;
-        out << "Format: " << this->Format << endl;
-        out << "Subchunk1ID: " << this->Subchunk1ID << endl;
-        out << "Subchunk1Size: " << this->Subchunk1Size << endl;
-        out << "AudioFormat: " << this->AudioFormat << endl;
-        out << "NumChannels: " << this->NumChannels << endl;
-        out << "SampleRate: " << this->SampleRate << endl;
-        out << "ByteRate: " << this->ByteRate << endl;
-        out << "BlockAlign: " << this->BlockAlign << endl;
-        out << "BitsPerSample: " << this->BitsPerSample << endl;
-        out << "Subchunk2ID: " << this->Subchunk2ID << endl;
-        out << "Subchunk2Size: " << this->Subchunk2Size << endl;
-        out << "==========================" << endl;
+        // Output header information
+        cout << "==========================" << endl;
+        cout << "=== Header Information ===" << endl;
+        cout << "==========================" << endl;
+        cout << "ChunkID: "         << string(this->header.ChunkID, 4) << endl;
+        cout << "ChunkSize: "       << this->header.ChunkSize << endl;
+        cout << "Format: "          << string(this->header.Format, 4) << endl;
+        cout << "Subchunk1ID: "     << string(this->header.Subchunk1ID, 4) << endl;
+        cout << "Subchunk1Size: "   << this->header.Subchunk1Size << endl;
+        cout << "AudioFormat: "     << this->header.AudioFormat << endl;
+        cout << "NumChannels: "     << this->header.NumChannels << endl;
+        cout << "SampleRate: "      << this->header.SampleRate << endl;
+        cout << "ByteRate: "        << this->header.ByteRate << endl;
+        cout << "BlockAlign: "      << this->header.BlockAlign << endl;
+        cout << "BitsPerSample: "   << this->header.BitsPerSample << endl;
+        cout << "Subchunk2ID: "     << string(this->header.Subchunk2ID, 4) << endl;
+        cout << "Subchunk2Size: "   << this->header.Subchunk2Size << endl;
+        cout << "==========================" << endl;
     }
 
     /**
@@ -191,19 +173,8 @@ public:
     {
         // Write out the header information
         file.seekp(0, ios::beg);
-        file.write(this->ChunkID, 4);
-        file.write((char*)&this->ChunkSize, sizeof(this->ChunkSize));
-        file.write(this->Format, 4);
-        file.write(this->Subchunk1ID, 4);
-        file.write((char*)&this->Subchunk1Size, sizeof(this->Subchunk1Size));
-        file.write((char*)&this->AudioFormat, sizeof(this->AudioFormat));
-        file.write((char*)&this->NumChannels, sizeof(this->NumChannels));
-        file.write((char*)&this->SampleRate, sizeof(this->SampleRate));
-        file.write((char*)&this->ByteRate, sizeof(this->ByteRate));
-        file.write((char*)&this->BlockAlign, sizeof(this->BlockAlign));
-        file.write((char*)&this->BitsPerSample, sizeof(this->BitsPerSample));
-        file.write(this->Subchunk2ID, 4);
-        file.write((char*)&this->Subchunk2Size, sizeof(this->Subchunk2Size));
+
+        file.write((char*)&this->header, sizeof(this->header));
     }
 
     /**
@@ -319,22 +290,22 @@ int main(int argc, char* argv[])
 
     // Open the input file
     ifstream inputFile(argv[1], ios::in | ios::binary | ios::ate);
-    WaveFile waveFile;
+    WaveFile inputWave;
     if (inputFile.is_open())
 	{
         // Read header data
-        waveFile.read(inputFile);
+        inputWave.read(inputFile);
+
+        // Print out the header
+        inputWave.printHeader();
 
         // Check the header values to make sure they conform to what is expected
-        int error = waveFile.check(cerr);
+        int error = inputWave.check();
         if (error > 0)
         {
             // Exit the program if the check failed
             return error;
         }
-
-        // Print out the header
-        waveFile.printHeader(cout);
 
         // Open the output file, disreguarding the contents of it
         ofstream outFile(argv[2], ios::out | ios::binary | ios::trunc);
@@ -342,11 +313,11 @@ int main(int argc, char* argv[])
         {
 
             // Rewrite the header
-            waveFile.writeHeader(outFile);
+            inputWave.writeHeader(outFile);
 
             // Find maximum amplitude
             cout << "Finding maximum amplitude..." << endl;
-            short maximumSample = waveFile.getMaxSample(inputFile);
+            short maximumSample = inputWave.getMaxSample(inputFile);
 
             // Output the amplitude of the sine wave that will be added
             cout << "Sine Wave Amplitude: " << maximumSample/2 << endl;
@@ -355,26 +326,26 @@ int main(int argc, char* argv[])
             // Iteration number is number of samples / number of channels
             cout << "Adding sine wave..." << endl;
             unsigned int iterationNumber = 0;
-            while (waveFile.hasMoreSamples())
+            while (inputWave.hasMoreSamples())
             {
                 // Expicit casting to double for time calculation
-                double t = ((double)iterationNumber) / ((double)waveFile.SampleRate);
+                double t = ((double)iterationNumber) / ((double)inputWave.header.SampleRate);
 
                 // Calculation of sine wave sample, should not overflow
                 // Half of maximum amplitude * sine wave at 2500 Hz
                 short sineWave = (maximumSample/2) * sin(2.0*3.14*2500.0*t);
 
                 // Loop through the channels
-                for (int i = 0; i < waveFile.NumChannels; i++)
+                for (int i = 0; i < inputWave.header.NumChannels; i++)
                 {
                     // Read new sample in
-                    short sample = waveFile.getNextSample(inputFile);
+                    short sample = inputWave.getNextSample(inputFile);
 
                     // Calculation of new sample, can overflow
                     short newSample = addOverflow(sineWave, sample);
 
                     // Write new sample to output file
-                    waveFile.writeSample(newSample, outFile);
+                    inputWave.writeSample(newSample, outFile);
                 }
                 iterationNumber++;
             }
@@ -413,8 +384,8 @@ int main(int argc, char* argv[])
     {
         summaryFile << "Input File: " << argv[1] << endl;
         summaryFile << "Output File: " << argv[2] << endl;
-        summaryFile << "Sampling Frequency (Hz): " << waveFile.SampleRate << endl;
-        summaryFile << "Length (s): " << (waveFile.numSamples / waveFile.NumChannels) / waveFile.SampleRate << endl;
+        summaryFile << "Sampling Frequency (Hz): " << inputWave.header.SampleRate << endl;
+        summaryFile << "Length (s): " << (inputWave.numSamples / inputWave.header.NumChannels) / inputWave.header.SampleRate << endl;
         summaryFile << "Execution time (s): " << seconds << endl;
         summaryFile.close();
     }
