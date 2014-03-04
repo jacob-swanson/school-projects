@@ -29,18 +29,18 @@ using namespace std;
 
 struct wave_header {
     char ChunkID[4];
-    int ChunkSize;
+    unsigned int ChunkSize;
     char Format[4];
     char Subchunk1ID[4];
-    int Subchunk1Size;
-    short AudioFormat;
-    short NumChannels;
-    int SampleRate;
-    int ByteRate;
-    short BlockAlign;
-    short BitsPerSample;
+    unsigned int Subchunk1Size;
+    unsigned short AudioFormat;
+    unsigned short NumChannels;
+    unsigned int SampleRate;
+    unsigned int ByteRate;
+    unsigned short BlockAlign;
+    unsigned short BitsPerSample;
     char Subchunk2ID[4];
-    int Subchunk2Size;
+    unsigned int Subchunk2Size;
 };
 
 // Wave file header structure
