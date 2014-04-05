@@ -1,2 +1,9 @@
 *.pro.user
 build-*
+*.suo
+*.user
+*.ncb
+*.sbr
+*.log
+*.sdf
+*.ipch
