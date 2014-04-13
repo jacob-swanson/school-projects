@@ -42,7 +42,7 @@ void xiir_filter(short* x, short* y, short sample)
 	x[0] = sample;
 	y[0] = sample;
 
-	// Apply the filter
+	// Apply the FIR filter
 	short temp = 0;
 	for (int i = 0; i < (*BLPoint); i++) {
 		temp += (short)((double)x[i] * BPoint[i]);
