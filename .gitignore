@@ -7,3 +7,4 @@ build-*
 *.log
 *.sdf
 *.ipch
+*Debug*
