@@ -8,12 +8,20 @@
 #include <complex>
 #include <ctime>
 #include <iomanip>
+#include <climits>
 
 
 using namespace std;
 
-#define FFT_LEN 1024
+// Length of the FFT to perform
+#define FFT_LEN 2048
 
+// Array that the Window will be multiplied by
+vector<double> window;
+
+/**
+ * Definition of the WAV header
+ */
 struct wave_header {
 	char ChunkID[4];
 	unsigned int ChunkSize;
@@ -30,6 +38,10 @@ struct wave_header {
 	unsigned int Subchunk2Size;
 };
 
+/**
+ * Check the wave_header for the expected values
+ * @param header WAV header
+ */
 int checkHeader(wave_header header)
 {
 	// Error checks
@@ -57,11 +69,8 @@ int checkHeader(wave_header header)
 		cerr << "BitsPerSample was \"" << header.BitsPerSample << "\" not 16" << endl;
 		return 6;
 	}
-	else if (!(header.SampleRate == 44100 || header.SampleRate == 22000)) {
-		cerr << "Sample rate was \"" << header.SampleRate << "\" not 44100 or 22000" << endl;
-		return 7;
-	}
-	else {
+	else 
+	{
 		return 0;
 	}
 }
@@ -69,6 +78,9 @@ int checkHeader(wave_header header)
 // Must provide type or MSVC++ barfs with "ambiguous call to overloaded function"
 double pi = 4 * atan(1.0);
 
+/**
+ * Calculate FFT on the buffer
+ */
 void fft(int sign, vector<complex<double>> &zs) {
 	unsigned int j = 0;
 	// Warning about signed vs unsigned comparison
@@ -94,7 +106,126 @@ void fft(int sign, vector<complex<double>> &zs) {
 	}
 }
 
-int _tmain(int argc, _TCHAR* argv[])
+/**
+ * Load in FFT_LEN samples from the file
+ */
+int loadBuffer(int numChannels, ifstream &inputFile, vector<complex<double>> &fftBuff)
+{
+	// Load fftBuff
+	short* sampleSet = new short[numChannels];
+	int fftCount = 0;
+	for (unsigned int i = 0; i < FFT_LEN; i++) {
+		// Read in a set of samples
+		inputFile.read((char*)sampleSet, numChannels * 2);
+
+		// If no exception occured, add sample
+		if (inputFile)
+		{
+			// Load the first channel, and multiply by the window
+			fftBuff.push_back(sampleSet[0] * window[i]);
+		}
+		else
+		{
+			// If an exception occured, return
+			return fftCount;
+		}
+
+		fftCount++;
+	}
+	delete [] sampleSet;
+
+	// Return the number of sample sets read
+	return fftCount;
+}
+
+/**
+ * Process a window at the given sample rate
+ * @param sampleRate Sample rate
+ * @param fftBuff Buffer of samples of length FFT_LEN
+ * @returns Maximum frequency component in the window
+ */
+double processWindow(unsigned int sampleRate, vector<complex<double>> &fftBuff)
+{
+	// Initialize
+	double maxSpec = (fftBuff.at(0).real())*(fftBuff.at(0).real()) + (fftBuff.at(0).imag())*(fftBuff.at(0).imag());
+	double tmp = 0;
+	int maxIndex = 0;
+
+	// Find max value's index
+	for (int j = 1; j < FFT_LEN; j++) {
+		tmp = (fftBuff.at(j).real())*(fftBuff.at(j).real()) + (fftBuff.at(j).imag())*(fftBuff.at(j).imag());
+		if (tmp > maxSpec) {
+			maxSpec = tmp;
+			maxIndex = j;
+		}
+	}
+
+	// Return the frequency
+	return (double)maxIndex * (double)sampleRate / (double)FFT_LEN;
+}
+
+/**
+ * Process a WAV file
+ * @param numChannels Number of channels in the WAV file
+ * @param sampleRate Sample rate of the WAV file
+ * @param inputFile WAV file, stream should be at the beginning of the data
+ * @returns Maximum frequency component in the spectrum
+ */
+double processFile(unsigned short numChannels, unsigned int sampleRate, ifstream &inputFile)
+{
+	// Max frequency found per window
+	vector<double> maxFreqs;
+	// Keep processing until the inputFile errors
+	while (inputFile)
+	{
+		// Load the buffer from file
+		vector<complex<double>> fftBuff;
+		int fftCount = loadBuffer(numChannels, inputFile, fftBuff);
+		
+		// Pad the buffer with 0's if needed, this will happen at the end of the WAV
+		if (fftCount < FFT_LEN)
+		{
+			for (int i = 0; i < FFT_LEN - fftCount; i++)
+			{
+				fftBuff.push_back(0.0);
+			}
+		}
+
+		// Checking that loading/padding worked correctly
+		if (fftBuff.size() != FFT_LEN)
+		{
+			cerr << "Error loading fftBuff to FFT length. Was \"" << fftCount << "\" not \"" << FFT_LEN << "\"." << endl;
+			return 1;
+		}
+
+		// Perform FFT on the window
+		fft(1, fftBuff);
+
+		// Analyse the FFT
+		double localMaxFreq = processWindow(sampleRate, fftBuff);
+		maxFreqs.push_back(localMaxFreq);
+
+		// Shift reading position back FFT_LEN / 2
+		streamoff position = inputFile.tellg();
+		inputFile.seekg(position - (FFT_LEN / 2));
+	}
+
+	// Find highest frequency
+	double max = 0.0;
+	for (int i = 0; i < maxFreqs.size(); i++)
+	{
+		// Had an issue where frequencies around the sampleRate were being returned from the fft
+		// Sample Rate / 2 should be the maximum expected frequency (Nyquist)
+		if (maxFreqs[i] > max && maxFreqs[i] < sampleRate / 2)
+			max = maxFreqs[i];
+	}
+	return max;
+}
+
+/**
+ * Accepts one command line argument, the file to analyse
+ */
+int main(int argc, char* argv[])
 {
 	// Check input arguments
 	if (argc != 2) {
@@ -115,56 +246,35 @@ int _tmain(int argc, _TCHAR* argv[])
 	inputFile.seekg(0, ios::beg);
 	inputFile.read((char*)&header, sizeof(header));
 
-	// Check the header info
+	// Check the header info for errors
 	int error = checkHeader(header);
 	if (error > 0) {
 		return error;
 	}
 
-	// Calculate the number of sample sets
-	unsigned int numSamples = (header.Subchunk2Size / 2) / header.NumChannels;
+	// Create the window
+	for (int i = 0; i < FFT_LEN - 1; i++)
+	{
+		window.push_back(sin((pi * i) / (FFT_LEN - 1)));
+	}
+	// This will make sure that it both begins and ends with 0, 
+	// otherwise the final value would be a very small number, not 0.
+	window.push_back(0.0);
 
 	// Mark the start time
 	clock_t startTime = clock();
-
-	// Initialize fftBuff
-	short* sampleSet = new short[header.NumChannels];
-	vector<complex<double>> fftBuff;
-	int fftCount = 0;
-	for (unsigned int i = 0; i < FFT_LEN; i++) {
-		// Read in a set of samples
-		inputFile.read((char*)sampleSet, header.NumChannels * 2);
-
-		fftBuff.push_back(sampleSet[0]);
-		fftCount++;
-	}
-
-	// Perform FFT
-	fft(1, fftBuff);
-
-	// Analyse the FFT
-	double maxSpec = (fftBuff.at(0).real())*(fftBuff.at(0).real()) + (fftBuff.at(0).imag())*(fftBuff.at(0).imag());
-	double tmp = 0;
-	int maxIndex = 0;
-
-	for (int j = 1; j < FFT_LEN; j++) {
-		tmp = (fftBuff.at(j).real())*(fftBuff.at(j).real()) + (fftBuff.at(j).imag())*(fftBuff.at(j).imag());
-		if (tmp > maxSpec) {
-			maxSpec = tmp;
-			maxIndex = j;
-		}
-	}
+	
+	// Process the file
+	double maxFreq = processFile(header.NumChannels, header.SampleRate, inputFile);
 
 	// Mark the end time
 	clock_t endTime = clock();
 
 	// Report results
-	cout << "Analysing time: " << setprecision(12) << fixed << (float)(endTime - startTime) / CLOCKS_PER_SEC << " seconds" << endl;
-	cout << "Frequency: " << maxIndex * header.SampleRate / FFT_LEN << " Hz" << endl;
+	cout << "Analysing time: " << setprecision(4) << fixed << (float)(endTime - startTime) / CLOCKS_PER_SEC << " seconds" << endl;
+	cout << "Frequency: " << maxFreq << " Hz" << endl;
 
-	// Delete the sample set
-	delete[] sampleSet;
-
+	// Close the file
 	inputFile.close();
 
 	return 0;
