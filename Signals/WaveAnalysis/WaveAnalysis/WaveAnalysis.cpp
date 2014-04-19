@@ -212,7 +212,7 @@ double processFile(unsigned short numChannels, unsigned int sampleRate, ifstream
 
 	// Find highest frequency
 	double max = 0.0;
-	for (int i = 0; i < maxFreqs.size(); i++)
+	for (unsigned int i = 0; i < maxFreqs.size(); i++)
 	{
 		// Had an issue where frequencies around the sampleRate were being returned from the fft
 		// Sample Rate / 2 should be the maximum expected frequency (Nyquist)
