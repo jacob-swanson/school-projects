@@ -8,8 +8,6 @@
 #include <complex>
 #include <ctime>
 #include <iomanip>
-#include <climits>
-
 
 using namespace std;
 
@@ -41,6 +39,7 @@ struct wave_header {
 /**
  * Check the wave_header for the expected values
  * @param header WAV header
+ * @returns Error code. If > 0, an error occured
  */
 int checkHeader(wave_header header)
 {
@@ -108,6 +107,10 @@ void fft(int sign, vector<complex<double>> &zs) {
 
 /**
  * Load in FFT_LEN samples from the file
+ * @param numChannels Number of channels in the WAV file
+ * @param inputFile WAV file stream
+ * @param fftBuff Window buffer
+ * @returns Number of samples read into fftBuff
  */
 int loadBuffer(int numChannels, ifstream &inputFile, vector<complex<double>> &fftBuff)
 {
@@ -223,7 +226,7 @@ double processFile(unsigned short numChannels, unsigned int sampleRate, ifstream
 }
 
 /**
- * Accepts one command line argument, the file to analyse
+ * Accepts one command line argument, the WAV file to analyse
  */
 int main(int argc, char* argv[])
 {
